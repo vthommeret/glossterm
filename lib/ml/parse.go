@@ -4,6 +4,7 @@ import "fmt"
 
 type Word struct {
 	Value     string
+	Text      string
 	Languages []Language
 }
 
@@ -91,7 +92,9 @@ Parse:
 					inSectionType = unknownSection
 				}
 			} else {
-				if section == nil {
+				if language == nil {
+					w.Text = i.val
+				} else if section == nil {
 					language.Text = i.val
 				} else {
 					section.Text = i.val
