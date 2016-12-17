@@ -4,8 +4,9 @@ import "fmt"
 
 type Word struct {
 	Value     string
-	Text      string
 	Languages []Language
+	Text      string
+	Sections  []Section
 }
 
 type Language struct {
@@ -49,10 +50,14 @@ Parse:
 		case itemError:
 			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
 		case itemEOF:
-			if section != nil {
-				language.Sections = append(language.Sections, *section)
-			}
-			if language != nil {
+			if language == nil {
+				if section != nil {
+					w.Sections = append(w.Sections, *section)
+				}
+			} else {
+				if section != nil {
+					language.Sections = append(language.Sections, *section)
+				}
 				w.Languages = append(w.Languages, *language)
 			}
 			break Parse
@@ -65,7 +70,11 @@ Parse:
 				inLanguage = true
 			} else if i.depth > 2 {
 				if section != nil {
-					language.Sections = append(language.Sections, *section)
+					if language == nil {
+						w.Sections = append(w.Sections, *section)
+					} else {
+						language.Sections = append(language.Sections, *section)
+					}
 				}
 				section = &Section{Depth: i.depth - 1}
 				inSection = true
