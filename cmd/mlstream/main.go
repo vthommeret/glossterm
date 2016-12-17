@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -9,9 +8,11 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
+var langs = []string{"English", "Spanish"}
+
 func main() {
-	if len(os.Args) < 3 {
-		log.Fatalf("Must specify file and word.")
+	if len(os.Args) < 2 {
+		log.Fatalf("Must specify file.")
 	}
 
 	fp := os.Args[1]
@@ -20,16 +21,52 @@ func main() {
 		log.Fatalf("Unable to open fp: %s", err)
 	}
 
-	w := os.Args[2]
+	pages := make(chan ml.Page, 10)
+	errors := make(chan ml.Error, 10)
+	done := make(chan bool)
 
-	p, err := ml.ParseXML(f, w)
-	if err != nil {
-		log.Fatalf("Unable to parse XML: %s", err)
-	}
+	go ml.ParseXML(f, pages, errors, done)
 
-	b, err := json.Marshal(p)
-	if err != nil {
-		log.Fatalf("Unable to marshal json: %s", err)
+Loop:
+	for {
+		select {
+		case e := <-errors:
+			log.Fatalf("Unable to parse XML: %s", e.Message)
+		case <-done:
+			break Loop
+		case p := <-pages:
+			w, err := ml.Parse(p)
+			if err != nil {
+				log.Fatalf("Unable to parse page: %s", err)
+			}
+			filterLangs(&w, langs)
+
+			var etyms []string
+			for _, l := range w.Languages {
+				if l.Etymology != "" {
+					etyms = append(etyms, fmt.Sprintf("  %s - %s", l.Name, l.Etymology))
+				}
+			}
+			if len(etyms) > 0 {
+				fmt.Printf("%s\n", w.Value)
+				for _, e := range etyms {
+					fmt.Println(e)
+				}
+			}
+		}
 	}
-	fmt.Print(string(b))
+}
+
+func filterLangs(w *ml.Word, langs []string) {
+	langMap := make(map[string]bool)
+	for _, l := range langs {
+		langMap[l] = true
+	}
+	var filtered []ml.Language
+	for _, l := range w.Languages {
+		if _, ok := langMap[l.Name]; ok {
+			filtered = append(filtered, l)
+		}
+	}
+	w.Languages = filtered
 }

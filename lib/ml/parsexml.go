@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"strings"
 )
 
 type Redirect struct {
@@ -16,16 +17,22 @@ type Page struct {
 	Text  string   `xml:"revision>text"`
 }
 
-const count = 10
+type Error struct {
+	Message string
+}
 
-func ParseXML(r io.Reader, word string) (Page, error) {
+const count = 1000
+
+func ParseXML(r io.Reader, pages chan<- Page, errors chan<- Error, done chan<- bool) {
 	d := xml.NewDecoder(r)
 
 	i := 0
+Parse:
 	for {
 		t, err := d.Token()
 		if err != nil {
-			return Page{}, fmt.Errorf("unable to decode token: %s", err)
+			errors <- Error{fmt.Sprintf("unable to decode token: %s", err)}
+			break
 		}
 		if t == nil {
 			break
@@ -36,16 +43,20 @@ func ParseXML(r io.Reader, word string) (Page, error) {
 				var p Page
 				d.DecodeElement(&p, &se)
 
-				if p.Title == word {
-					return p, nil
+				// Exclude namespaced pages.
+				if strings.Contains(p.Title, ":") {
+					continue Parse
 				}
 
+				pages <- p
 				i++
+
 				if i == count {
-					//break Loop
+					break Parse
 				}
 			}
 		}
 	}
-	return Page{}, fmt.Errorf("unable to parse XML")
+
+	done <- true
 }
