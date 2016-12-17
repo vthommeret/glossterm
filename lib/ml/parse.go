@@ -8,8 +8,9 @@ type Word struct {
 }
 
 type Language struct {
-	Name     string
-	Sections []Section
+	Name      string
+	Etymology string
+	Sections  []Section
 }
 
 type Section struct {
@@ -18,6 +19,13 @@ type Section struct {
 	Text  string
 }
 
+type sectionType int
+
+const (
+	unknownSection sectionType = iota
+	etymologySection
+)
+
 func Parse(p Page) (Word, error) {
 	w := Word{
 		Value: p.Title,
@@ -25,6 +33,7 @@ func Parse(p Page) (Word, error) {
 
 	var inLanguage bool
 	var inSection bool
+	var inSectionType sectionType
 
 	var language *Language
 	var section *Section
@@ -70,8 +79,22 @@ Parse:
 				language.Name = i.val
 			} else if inSection {
 				section.Name = i.val
+				if section.Depth == 2 {
+					switch section.Name {
+					case "Etymology":
+						inSectionType = etymologySection
+					default:
+						inSectionType = unknownSection
+					}
+				} else if section.Depth < 3 {
+					inSectionType = unknownSection
+				}
 			} else {
 				section.Text = i.val
+				switch inSectionType {
+				case etymologySection:
+					language.Etymology = i.val
+				}
 			}
 		}
 	}

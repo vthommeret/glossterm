@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
@@ -51,12 +50,17 @@ func main() {
 
 	filterLangs(&w, []string{"English", "Spanish"})
 
-	fmt.Printf("%s\n", w.Value)
+	fmt.Printf("%s\n\n", w.Value)
 	for _, l := range w.Languages {
-		fmt.Printf("\n  %s (language) \n", l.Name)
-		for _, s := range l.Sections {
-			fmt.Printf("%s%s\n", strings.Repeat("  ", s.Depth), s.Name)
+		fmt.Printf("  %s (language) \n", l.Name)
+		if l.Etymology != "" {
+			fmt.Printf("    Etymology - %s\n", l.Etymology)
 		}
+		/*
+			for _, s := range l.Sections {
+				fmt.Printf("%s%s\n", strings.Repeat("  ", s.Depth), s.Name)
+			}
+		*/
 	}
 }
 
