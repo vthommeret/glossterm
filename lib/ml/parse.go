@@ -9,6 +9,7 @@ type Word struct {
 
 type Language struct {
 	Name      string
+	Text      string
 	Etymology string
 	Sections  []Section
 }
@@ -90,7 +91,11 @@ Parse:
 					inSectionType = unknownSection
 				}
 			} else {
-				section.Text = i.val
+				if section == nil {
+					language.Text = i.val
+				} else {
+					section.Text = i.val
+				}
 				switch inSectionType {
 				case etymologySection:
 					language.Etymology = i.val
