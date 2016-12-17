@@ -44,10 +44,32 @@ func main() {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w := ml.Parse(p)
-
-	fmt.Printf("%s\n\n", w.Value)
-	for _, s := range w.Sections {
-		fmt.Printf("%s%s\n", strings.Repeat("  ", s.Depth-1), s.Name)
+	w, err := ml.Parse(p)
+	if err != nil {
+		log.Fatalf("Unable to parse word: %s", err)
 	}
+
+	filterLangs(&w, []string{"English", "Spanish"})
+
+	fmt.Printf("%s\n", w.Value)
+	for _, l := range w.Languages {
+		fmt.Printf("\n  %s (language) \n", l.Name)
+		for _, s := range l.Sections {
+			fmt.Printf("%s%s\n", strings.Repeat("  ", s.Depth), s.Name)
+		}
+	}
+}
+
+func filterLangs(w *ml.Word, langs []string) {
+	langMap := make(map[string]bool)
+	for _, l := range langs {
+		langMap[l] = true
+	}
+	var filtered []ml.Language
+	for _, l := range w.Languages {
+		if _, ok := langMap[l.Name]; ok {
+			filtered = append(filtered, l)
+		}
+	}
+	w.Languages = filtered
 }

@@ -3,7 +3,12 @@ package ml
 import "fmt"
 
 type Word struct {
-	Value    string
+	Value     string
+	Languages []Language
+}
+
+type Language struct {
+	Name     string
 	Sections []Section
 }
 
@@ -13,12 +18,15 @@ type Section struct {
 	Text  string
 }
 
-func Parse(p Page) Word {
+func Parse(p Page) (Word, error) {
 	w := Word{
 		Value: p.Title,
 	}
 
-	var inHeader bool
+	var inLanguage bool
+	var inSection bool
+
+	var language *Language
 	var section *Section
 
 	l := newLexer(p.Text)
@@ -28,23 +36,39 @@ Parse:
 		i := l.NextItem()
 		switch i.typ {
 		case itemError:
-			fmt.Printf("Error: %s\n", i.val)
-			break Parse
+			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
 		case itemEOF:
 			if section != nil {
-				w.Sections = append(w.Sections, *section)
+				language.Sections = append(language.Sections, *section)
+			}
+			if language != nil {
+				w.Languages = append(w.Languages, *language)
 			}
 			break Parse
 		case itemHeaderStart:
-			if section != nil {
-				w.Sections = append(w.Sections, *section)
+			if i.depth == 2 {
+				if language != nil {
+					w.Languages = append(w.Languages, *language)
+				}
+				language = &Language{Sections: []Section{}}
+				inLanguage = true
+			} else if i.depth > 2 {
+				if section != nil {
+					language.Sections = append(language.Sections, *section)
+				}
+				section = &Section{Depth: i.depth - 1}
+				inSection = true
 			}
-			section = &Section{Depth: i.depth}
-			inHeader = true
 		case itemHeaderEnd:
-			inHeader = false
+			if i.depth == 2 {
+				inLanguage = false
+			} else if i.depth > 2 {
+				inSection = false
+			}
 		case itemText:
-			if inHeader {
+			if inLanguage {
+				language.Name = i.val
+			} else if inSection {
 				section.Name = i.val
 			} else {
 				section.Text = i.val
@@ -52,5 +76,5 @@ Parse:
 		}
 	}
 
-	return w
+	return w, nil
 }
