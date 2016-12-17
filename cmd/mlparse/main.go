@@ -1,10 +1,9 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -32,13 +31,10 @@ func main() {
 		}
 	}
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		log.Fatalf("Unable to read file: %s", err)
-	}
+	dec := gob.NewDecoder(f)
 
 	var p ml.Page
-	err = json.Unmarshal(b, &p)
+	err = dec.Decode(&p)
 	if err != nil {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
