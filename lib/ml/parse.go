@@ -107,10 +107,10 @@ Parse:
 					language.Text = i.val
 				} else {
 					section.Text = i.val
-				}
-				switch inSectionType {
-				case etymologySection:
-					language.Etymology = i.val
+					switch inSectionType {
+					case etymologySection:
+						language.Etymology = i.val
+					}
 				}
 			}
 		}
