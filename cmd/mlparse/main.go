@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
@@ -35,6 +38,16 @@ func main() {
 		log.Fatalf("Unable to read file: %s", err)
 	}
 
-	l := ml.NewLexer(string(b))
-	l.PrettyPrint()
+	var p ml.Page
+	err = json.Unmarshal(b, &p)
+	if err != nil {
+		log.Fatalf("Unable to unmarshal JSON: %s", err)
+	}
+
+	w := ml.Parse(p)
+
+	fmt.Printf("%s\n\n", w.Value)
+	for _, s := range w.Sections {
+		fmt.Printf("%s%s\n", strings.Repeat("  ", s.Depth-1), s.Name)
+	}
 }

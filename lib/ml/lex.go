@@ -1,7 +1,6 @@
 package ml
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -169,8 +168,8 @@ func (l *lexer) Drain() {
 	}
 }
 
-// NewLexer creates a new scanner for the input string.
-func NewLexer(input string) *lexer {
+// newLexer creates a new scanner for the input string.
+func newLexer(input string) *lexer {
 	l := &lexer{
 		input: normalize(input),
 		items: make(chan item),
@@ -180,7 +179,7 @@ func NewLexer(input string) *lexer {
 }
 
 // Print prints all items
-func (l *lexer) Print() {
+func (l *lexer) print() {
 	for {
 		i := l.NextItem()
 		if i.typ == itemEOF || i.typ == itemError {
@@ -197,52 +196,9 @@ func (l *lexer) Print() {
 	}
 }
 
-// PrettyPrint pretty prints all items
-func (l *lexer) PrettyPrint() {
-	inHeader := false
-	depth := 0
-	for {
-		i := l.NextItem()
-		if i.typ == itemEOF || i.typ == itemError {
-			if i.typ == itemError {
-				fmt.Printf("Error: %s\n", i.val)
-			}
-			break
-		}
-
-		if i.typ == itemHeaderStart {
-			inHeader = true
-			depth = i.depth
-		} else if i.typ == itemHeaderEnd {
-			inHeader = false
-		}
-
-		if i.typ == itemText {
-			prefix := ""
-			if depth > 0 {
-				prefix = strings.Repeat("  ", depth-1)
-			}
-			if inHeader {
-				headerPrefix := strings.Repeat("#", depth)
-				fmt.Printf("%s%s %s\n\n", prefix, headerPrefix, i.val)
-			} else {
-				fmt.Printf("%s", indent(i.val, prefix))
-			}
-		}
-	}
-}
-
 // Simplifies parsing.
 func normalize(s string) string {
 	return fmt.Sprintf("\n%s\n", strings.TrimSpace(s))
-}
-
-func indent(s, prefix string) string {
-	var buffer bytes.Buffer
-	for _, line := range strings.Split(s, "\n") {
-		buffer.WriteString(prefix + line + "\n")
-	}
-	return buffer.String()
 }
 
 // run runs the state machine for the lexer.
