@@ -213,6 +213,8 @@ const (
 	headers       = 6
 	leftTemplate  = "{{"
 	rightTemplate = "}}"
+	paramEqual    = "="
+	paramDelim    = "|"
 )
 
 // lexText scans until a header or template delimiter.
@@ -272,7 +274,7 @@ func lexLeftTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(leftTemplate))
 	l.emit(itemLeftTemplate)
 	l.ignore()
-	return lexInsideAction
+	return lexAction
 }
 
 // lexRightTemplate scans the right template delimiter.
@@ -282,26 +284,11 @@ func lexRightTemplate(l *lexer) stateFn {
 	return lexText
 }
 
-// lexInsideAction scans the elements inside action delimiters.
-func lexInsideAction(l *lexer) stateFn {
-	// Either number, quoted string, or identifier.
-	// Spaces separate arguments; runs of spaces turn into itemSpace.
-	// Pipe symbols separate and are emitted.
+// lexAction scans a template action.
+func lexAction(l *lexer) stateFn {
 	if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
 		return lexRightTemplate
 	}
-	switch r := l.next(); {
-	case r == '|':
-		l.emit(itemPipe)
-	default:
-		l.backup()
-		return lexAction
-	}
-	return lexInsideAction
-}
-
-// lexAction scans a template action.
-func lexAction(l *lexer) stateFn {
 Loop:
 	for {
 		switch r := l.next(); {
@@ -309,21 +296,28 @@ Loop:
 			return l.errorf("unclosed action")
 		case r == '}':
 			l.backup()
-			l.emit(itemAction)
+			if l.pos > l.start {
+				l.emit(itemAction)
+			}
 			break Loop
+		case r == '|':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemAction)
+			}
+			return lexParam
 		default:
 			// absorb.
-			if l.peek() == '|' {
-				l.emit(itemAction)
-				return lexParam
-			}
 		}
 	}
-	return lexInsideAction
+	return lexAction
 }
 
 // lexParam scans a template parameter.
 func lexParam(l *lexer) stateFn {
+	l.pos += Pos(len(paramDelim))
+	l.ignore()
+
 	var kv bool
 Loop:
 	for {
@@ -331,26 +325,26 @@ Loop:
 		case r == eof || isEndOfLine(r):
 			return l.errorf("unclosed action")
 		case r == '=':
+			l.backup()
+			l.emit(itemParamName)
+			l.pos += Pos(len(paramEqual))
 			l.ignore()
+			kv = true
 		case r == '|':
+			l.backup()
+			l.emitParam(kv)
+			l.pos += Pos(len(paramDelim))
 			l.ignore()
+			kv = false
 		case r == '}':
 			l.backup()
 			l.emitParam(kv)
 			break Loop
 		default:
 			// absorb.
-			switch l.peek() {
-			case '=':
-				l.emit(itemParamName)
-				kv = true
-			case '|':
-				l.emitParam(kv)
-				kv = false
-			}
 		}
 	}
-	return lexInsideAction
+	return lexAction
 }
 
 func (l *lexer) emitParam(kv bool) {

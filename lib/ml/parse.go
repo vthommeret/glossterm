@@ -94,6 +94,7 @@ Parse:
 		case itemText:
 			if inLanguageHeader {
 				language.Name = i.val
+				sectionType = unknownSection
 			} else if inSectionHeader {
 				if sectionDepth == 2 {
 					if strings.HasPrefix(i.val, "Etymology") {
@@ -101,7 +102,8 @@ Parse:
 					} else {
 						sectionType = unknownSection
 					}
-				} else if sectionDepth < 2 {
+				} else {
+					// This will exclude subsections of "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
 					sectionType = unknownSection
 				}
 			}
