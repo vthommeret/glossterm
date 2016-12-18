@@ -21,7 +21,31 @@ type Error struct {
 	Message string
 }
 
-const count = 1000
+const count = 1
+
+func ParseXMLWord(r io.Reader, w string) (*Page, error) {
+	d := xml.NewDecoder(r)
+	for {
+		t, err := d.Token()
+		if err != nil {
+			if err != io.EOF {
+				return nil, err
+			}
+			break
+		}
+		switch se := t.(type) {
+		case xml.StartElement:
+			if se.Name.Local == "page" {
+				var p Page
+				d.DecodeElement(&p, &se)
+				if p.Title == w {
+					return &p, nil
+				}
+			}
+		}
+	}
+	return nil, nil
+}
 
 func ParseXML(r io.Reader, pages chan<- Page, errors chan<- Error, done chan<- bool) {
 	d := xml.NewDecoder(r)
@@ -31,7 +55,9 @@ Parse:
 	for {
 		t, err := d.Token()
 		if err != nil {
-			errors <- Error{fmt.Sprintf("unable to decode token: %s", err)}
+			if err != io.EOF {
+				errors <- Error{fmt.Sprintf("unable to decode token: %s", err)}
+			}
 			break
 		}
 		if t == nil {

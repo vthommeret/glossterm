@@ -1,25 +1,32 @@
 package ml
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Word struct {
-	Value     string
+	Name      string
 	Languages []Language
-	Text      string
-	Sections  []Section
 }
 
 type Language struct {
 	Name      string
-	Text      string
-	Etymology string
-	Sections  []Section
+	Etymology Etymology
 }
 
-type Section struct {
+type Etymology struct {
+	Templates []Template
+}
+
+type Template struct {
+	Action     string
+	Parameters []Parameter
+}
+
+type Parameter struct {
 	Name  string
-	Depth int
-	Text  string
+	Value string
 }
 
 type sectionType int
@@ -31,17 +38,20 @@ const (
 
 func Parse(p Page) (Word, error) {
 	w := Word{
-		Value: p.Title,
+		Name: p.Title,
 	}
 
-	var inLanguage bool
-	var inSection bool
-	var inSectionType sectionType
+	var inLanguageHeader bool
+	var inSectionHeader bool
+
+	var sectionType sectionType
+	var sectionDepth int = -1
 
 	var language *Language
-	var section *Section
+	var tpl *Template
+	var param *Parameter
 
-	l := newLexer(p.Text)
+	l := NewLexer(p.Text)
 
 Parse:
 	for {
@@ -50,68 +60,79 @@ Parse:
 		case itemError:
 			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
 		case itemEOF:
-			if language == nil {
-				if section != nil {
-					w.Sections = append(w.Sections, *section)
-				}
-			} else {
-				if section != nil {
-					language.Sections = append(language.Sections, *section)
-				}
+			if language != nil {
 				w.Languages = append(w.Languages, *language)
 			}
 			break Parse
 		case itemHeaderStart:
-			if i.depth == 2 {
+			if i.depth == 1 {
+				language = nil
+				inLanguageHeader = false
+				inSectionHeader = false
+				sectionType = unknownSection
+				sectionDepth = -1
+			} else if i.depth == 2 {
 				if language != nil {
 					w.Languages = append(w.Languages, *language)
 				}
-				language = &Language{Sections: []Section{}}
-				inLanguage = true
-			} else if i.depth > 2 {
-				if section != nil {
-					if language == nil {
-						w.Sections = append(w.Sections, *section)
-					} else {
-						language.Sections = append(language.Sections, *section)
-					}
+				language = &Language{
+					Etymology: Etymology{
+						Templates: []Template{},
+					},
 				}
-				section = &Section{Depth: i.depth - 1}
-				inSection = true
+				inLanguageHeader = true
+			} else if i.depth > 2 {
+				inSectionHeader = true
+				sectionDepth = i.depth - 1
 			}
 		case itemHeaderEnd:
 			if i.depth == 2 {
-				inLanguage = false
+				inLanguageHeader = false
 			} else if i.depth > 2 {
-				inSection = false
+				inSectionHeader = false
 			}
 		case itemText:
-			if inLanguage {
+			if inLanguageHeader {
 				language.Name = i.val
-			} else if inSection {
-				section.Name = i.val
-				if section.Depth == 2 {
-					switch section.Name {
-					case "Etymology":
-						inSectionType = etymologySection
-					default:
-						inSectionType = unknownSection
+			} else if inSectionHeader {
+				if sectionDepth == 2 {
+					if strings.HasPrefix(i.val, "Etymology") {
+						sectionType = etymologySection
+					} else {
+						sectionType = unknownSection
 					}
-				} else if section.Depth < 3 {
-					inSectionType = unknownSection
+				} else if sectionDepth < 2 {
+					sectionType = unknownSection
 				}
-			} else {
-				if language == nil {
-					w.Text = i.val
-				} else if section == nil {
-					language.Text = i.val
-				} else {
-					section.Text = i.val
-					switch inSectionType {
-					case etymologySection:
-						language.Etymology = i.val
-					}
+			}
+		case itemLeftTemplate:
+			if sectionType == etymologySection {
+				tpl = &Template{Parameters: []Parameter{}}
+			}
+		case itemRightTemplate:
+			if sectionType == etymologySection {
+				if language != nil {
+					language.Etymology.Templates = append(language.Etymology.Templates,
+						*tpl,
+					)
 				}
+			}
+		case itemAction:
+			if sectionType == etymologySection {
+				tpl.Action = i.val
+			}
+		case itemParam:
+			if sectionType == etymologySection {
+				tpl.Parameters = append(tpl.Parameters, Parameter{Value: i.val})
+			}
+		case itemParamName:
+			if sectionType == etymologySection {
+				param = &Parameter{Name: i.val}
+			}
+		case itemParamValue:
+			if sectionType == etymologySection {
+				param.Value = i.val
+				tpl.Parameters = append(tpl.Parameters, *param)
 			}
 		}
 	}

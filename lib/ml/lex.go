@@ -43,18 +43,32 @@ type itemType int
 const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF
-	itemHeaderStart // Header start
-	itemHeaderEnd   // Header end
-	itemText        // plain text
+	itemAction        // Template action
+	itemParam         // Template parameter
+	itemParamName     // Template parameter name
+	itemParamValue    // Template parameter value
+	itemPipe          // Pipe symbol
+	itemHeaderStart   // Header start
+	itemHeaderEnd     // Header end
+	itemText          // Plain text
+	itemLeftTemplate  // Left template delimiter
+	itemRightTemplate // Right template delimiter
 )
 
 // Make the types prettyprint.
 var itemName = map[itemType]string{
-	itemError:       "error",
-	itemEOF:         "EOF",
-	itemHeaderStart: "header start",
-	itemHeaderEnd:   "header end",
-	itemText:        "text",
+	itemError:         "error",
+	itemEOF:           "EOF",
+	itemAction:        "action",
+	itemParam:         "param",
+	itemParamName:     "param name",
+	itemParamValue:    "param value",
+	itemPipe:          "pipe",
+	itemHeaderStart:   "header start",
+	itemHeaderEnd:     "header end",
+	itemText:          "text",
+	itemLeftTemplate:  "left template",
+	itemRightTemplate: "right template",
 }
 
 func (i itemType) String() string {
@@ -72,14 +86,12 @@ type stateFn func(*lexer) stateFn
 
 // lexer holds the state of the scanner.
 type lexer struct {
-	input      string    // the string being scanned
-	state      stateFn   // the next lexing function to enter
-	pos        Pos       // current position in the input
-	start      Pos       // start position of this item
-	width      Pos       // width of last rune read from input
-	lastPos    Pos       // position of most recent item returned by nextItem
-	items      chan item // channel of scanned items
-	parenDepth int       // nesting depth of ( ) exprs
+	input string    // the string being scanned
+	state stateFn   // the next lexing function to enter
+	pos   Pos       // current position in the input
+	start Pos       // start position of this item
+	width Pos       // width of last rune read from input
+	items chan item // channel of scanned items
 }
 
 // next returns the next rune in the input.
@@ -139,13 +151,6 @@ func (l *lexer) acceptRun(valid string) {
 	l.backup()
 }
 
-// lineNumber reports which line we're on, based on the position of
-// the previous item returned by nextItem. Doing it this way
-// means we don't have to worry about peek double counting.
-func (l *lexer) lineNumber() int {
-	return 1 + strings.Count(l.input[:l.lastPos], "\n")
-}
-
 // errorf returns an error token and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.nextItem.
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
@@ -157,19 +162,11 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 // Called by the parser, not in the lexing goroutine.
 func (l *lexer) NextItem() item {
 	item := <-l.items
-	l.lastPos = item.pos
 	return item
 }
 
-// Drain drains the output so the lexing goroutine will exit.
-// Called by the parser, not in the lexing goroutine.
-func (l *lexer) Drain() {
-	for range l.items {
-	}
-}
-
-// newLexer creates a new scanner for the input string.
-func newLexer(input string) *lexer {
+// NewLexer creates a new scanner for the input string.
+func NewLexer(input string) *lexer {
 	l := &lexer{
 		input: normalize(input),
 		items: make(chan item),
@@ -179,7 +176,7 @@ func newLexer(input string) *lexer {
 }
 
 // Print prints all items
-func (l *lexer) print() {
+func (l *lexer) Print() {
 	for {
 		i := l.NextItem()
 		if i.typ == itemEOF || i.typ == itemError {
@@ -212,33 +209,42 @@ func (l *lexer) run() {
 // state functions
 
 const (
-	headerDelim = "="
-	headers     = 6
+	headerDelim   = "="
+	headers       = 6
+	leftTemplate  = "{{"
+	rightTemplate = "}}"
 )
 
-// lexText scans until an opening action delimiter, "{{".
+// lexText scans until a header or template delimiter.
 func lexText(l *lexer) stateFn {
 	for {
 		for i := headers; i > 0; i-- {
 			delim := strings.Repeat(headerDelim, i)
 
-			leftDelim := "\n" + delim
-			if strings.HasPrefix(l.input[l.pos:], leftDelim) {
+			leftHeader := "\n" + delim
+			if strings.HasPrefix(l.input[l.pos:], leftHeader) {
 				if l.pos > l.start {
 					l.emit(itemText)
 				}
 				l.ignore()
-				return lexHeaderDelim(itemHeaderStart, leftDelim, i)
+				return lexHeaderDelim(itemHeaderStart, leftHeader, i)
 			}
 
-			rightDelim := delim + "\n"
-			if strings.HasPrefix(l.input[l.pos:], rightDelim) {
+			rightHeader := delim + "\n"
+			if strings.HasPrefix(l.input[l.pos:], rightHeader) {
 				if l.pos > l.start {
 					l.emit(itemText)
 				}
 				l.ignore()
-				return lexHeaderDelim(itemHeaderEnd, rightDelim, i)
+				return lexHeaderDelim(itemHeaderEnd, rightHeader, i)
 			}
+		}
+		if strings.HasPrefix(l.input[l.pos:], leftTemplate) {
+			if l.pos > l.start {
+				l.emit(itemText)
+			}
+			l.ignore()
+			return lexLeftTemplate
 		}
 		if l.next() == eof {
 			break
@@ -257,7 +263,105 @@ func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
 		l.pos += Pos(len(delim))
 		l.emitHeader(it, depth)
 		l.ignore()
-		l.parenDepth = 0
 		return lexText
 	}
+}
+
+// lexLeftTemplate scans the left template delimiter.
+func lexLeftTemplate(l *lexer) stateFn {
+	l.pos += Pos(len(leftTemplate))
+	l.emit(itemLeftTemplate)
+	l.ignore()
+	return lexInsideAction
+}
+
+// lexRightTemplate scans the right template delimiter.
+func lexRightTemplate(l *lexer) stateFn {
+	l.pos += Pos(len(rightTemplate))
+	l.emit(itemRightTemplate)
+	return lexText
+}
+
+// lexInsideAction scans the elements inside action delimiters.
+func lexInsideAction(l *lexer) stateFn {
+	// Either number, quoted string, or identifier.
+	// Spaces separate arguments; runs of spaces turn into itemSpace.
+	// Pipe symbols separate and are emitted.
+	if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+		return lexRightTemplate
+	}
+	switch r := l.next(); {
+	case r == '|':
+		l.emit(itemPipe)
+	default:
+		l.backup()
+		return lexAction
+	}
+	return lexInsideAction
+}
+
+// lexAction scans a template action.
+func lexAction(l *lexer) stateFn {
+Loop:
+	for {
+		switch r := l.next(); {
+		case r == eof || isEndOfLine(r):
+			return l.errorf("unclosed action")
+		case r == '}':
+			l.backup()
+			l.emit(itemAction)
+			break Loop
+		default:
+			// absorb.
+			if l.peek() == '|' {
+				l.emit(itemAction)
+				return lexParam
+			}
+		}
+	}
+	return lexInsideAction
+}
+
+// lexParam scans a template parameter.
+func lexParam(l *lexer) stateFn {
+	var kv bool
+Loop:
+	for {
+		switch r := l.next(); {
+		case r == eof || isEndOfLine(r):
+			return l.errorf("unclosed action")
+		case r == '=':
+			l.ignore()
+		case r == '|':
+			l.ignore()
+		case r == '}':
+			l.backup()
+			l.emitParam(kv)
+			break Loop
+		default:
+			// absorb.
+			switch l.peek() {
+			case '=':
+				l.emit(itemParamName)
+				kv = true
+			case '|':
+				l.emitParam(kv)
+				kv = false
+			}
+		}
+	}
+	return lexInsideAction
+}
+
+func (l *lexer) emitParam(kv bool) {
+	if kv {
+		l.emit(itemParamValue)
+	} else {
+		l.emit(itemParam)
+	}
+}
+
+// isEndOfLine reports whether r is an end-of-line character.
+func isEndOfLine(r rune) bool {
+	return r == '\r' || r == '\n'
 }

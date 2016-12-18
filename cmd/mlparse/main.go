@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -43,21 +44,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}
-
 	filterLangs(&w, []string{"English", "Spanish"})
 
-	fmt.Printf("%s\n\n", w.Value)
-	for _, l := range w.Languages {
-		fmt.Printf("  %s (language) \n", l.Name)
-		if l.Etymology != "" {
-			fmt.Printf("    Etymology - %s\n", l.Etymology)
-		}
-		/*
-			for _, s := range l.Sections {
-				fmt.Printf("%s%s\n", strings.Repeat("  ", s.Depth), s.Name)
-			}
-		*/
+	b, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		log.Fatalf("Unable to marshal JSON: %s", err)
 	}
+
+	fmt.Printf(string(b))
 }
 
 func filterLangs(w *ml.Word, langs []string) {

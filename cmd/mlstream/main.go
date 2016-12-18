@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -41,18 +42,11 @@ Loop:
 			}
 			filterLangs(&w, langs)
 
-			var etyms []string
-			for _, l := range w.Languages {
-				if l.Etymology != "" {
-					etyms = append(etyms, fmt.Sprintf("  %s - %s", l.Name, l.Etymology))
-				}
+			b, err := json.MarshalIndent(w, "", "  ")
+			if err != nil {
+				log.Fatalf("Unable to marshal JSON: %s", err)
 			}
-			if len(etyms) > 0 {
-				fmt.Printf("%s\n", w.Value)
-				for _, e := range etyms {
-					fmt.Println(e)
-				}
-			}
+			fmt.Printf("%s\n", string(b))
 		}
 	}
 }
