@@ -16,12 +16,14 @@ type Language struct {
 }
 
 type Etymology struct {
-	Templates []Template
+	Mentions []Mention
+	Borrows  []Borrow
 }
 
 type Template struct {
-	Action     string
-	Parameters []Parameter
+	Action          string
+	Parameters      []string
+	NamedParameters []Parameter
 }
 
 type Parameter struct {
@@ -75,11 +77,7 @@ Parse:
 				if language != nil {
 					w.Languages = append(w.Languages, *language)
 				}
-				language = &Language{
-					Etymology: Etymology{
-						Templates: []Template{},
-					},
-				}
+				language = &Language{}
 				inLanguageHeader = true
 			} else if i.depth > 2 {
 				inSectionHeader = true
@@ -109,14 +107,20 @@ Parse:
 			}
 		case itemLeftTemplate:
 			if sectionType == etymologySection {
-				tpl = &Template{Parameters: []Parameter{}}
+				tpl = &Template{}
 			}
 		case itemRightTemplate:
 			if sectionType == etymologySection {
 				if language != nil {
-					language.Etymology.Templates = append(language.Etymology.Templates,
-						*tpl,
-					)
+					if tpl.Action == "m" || tpl.Action == "mention" {
+						language.Etymology.Mentions = append(language.Etymology.Mentions,
+							tpl.ToMention(),
+						)
+					} else if tpl.Action == "bor" || tpl.Action == "borrowing" {
+						language.Etymology.Borrows = append(language.Etymology.Borrows,
+							tpl.ToBorrow(),
+						)
+					}
 				}
 			}
 		case itemAction:
@@ -125,7 +129,7 @@ Parse:
 			}
 		case itemParam:
 			if sectionType == etymologySection {
-				tpl.Parameters = append(tpl.Parameters, Parameter{Value: i.val})
+				tpl.Parameters = append(tpl.Parameters, i.val)
 			}
 		case itemParamName:
 			if sectionType == etymologySection {
@@ -134,7 +138,7 @@ Parse:
 		case itemParamValue:
 			if sectionType == etymologySection {
 				param.Value = i.val
-				tpl.Parameters = append(tpl.Parameters, *param)
+				tpl.NamedParameters = append(tpl.NamedParameters, *param)
 			}
 		}
 	}
