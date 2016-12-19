@@ -3,6 +3,8 @@ package ml
 import (
 	"fmt"
 	"strings"
+
+	"github.com/vthommeret/memory.limited/lib/tpl"
 )
 
 type Word struct {
@@ -16,19 +18,10 @@ type Language struct {
 }
 
 type Etymology struct {
-	Mentions []Mention
-	Borrows  []Borrow
-}
-
-type Template struct {
-	Action          string
-	Parameters      []string
-	NamedParameters []Parameter
-}
-
-type Parameter struct {
-	Name  string
-	Value string
+	Mentions []tpl.Mention
+	Borrows  []tpl.Borrow
+	Prefixes []tpl.Prefix
+	Suffixes []tpl.Suffix
 }
 
 type sectionType int
@@ -50,8 +43,8 @@ func Parse(p Page) (Word, error) {
 	var sectionDepth int = -1
 
 	var language *Language
-	var tpl *Template
-	var param *Parameter
+	var template *tpl.Template
+	var param *tpl.Parameter
 
 	l := NewLexer(p.Text)
 
@@ -107,38 +100,47 @@ Parse:
 			}
 		case itemLeftTemplate:
 			if sectionType == etymologySection {
-				tpl = &Template{}
+				template = &tpl.Template{}
 			}
 		case itemRightTemplate:
 			if sectionType == etymologySection {
 				if language != nil {
-					if tpl.Action == "m" || tpl.Action == "mention" {
+					switch template.Action {
+					case "m", "mention":
 						language.Etymology.Mentions = append(language.Etymology.Mentions,
-							tpl.ToMention(),
+							template.ToMention(),
 						)
-					} else if tpl.Action == "bor" || tpl.Action == "borrowing" {
+					case "bor", "borrowing":
 						language.Etymology.Borrows = append(language.Etymology.Borrows,
-							tpl.ToBorrow(),
+							template.ToBorrow(),
+						)
+					case "prefix":
+						language.Etymology.Prefixes = append(language.Etymology.Prefixes,
+							template.ToPrefix(),
+						)
+					case "suffix":
+						language.Etymology.Suffixes = append(language.Etymology.Suffixes,
+							template.ToSuffix(),
 						)
 					}
 				}
 			}
 		case itemAction:
 			if sectionType == etymologySection {
-				tpl.Action = i.val
+				template.Action = i.val
 			}
 		case itemParam:
 			if sectionType == etymologySection {
-				tpl.Parameters = append(tpl.Parameters, i.val)
+				template.Parameters = append(template.Parameters, i.val)
 			}
 		case itemParamName:
 			if sectionType == etymologySection {
-				param = &Parameter{Name: i.val}
+				param = &tpl.Parameter{Name: i.val}
 			}
 		case itemParamValue:
 			if sectionType == etymologySection {
 				param.Value = i.val
-				tpl.NamedParameters = append(tpl.NamedParameters, *param)
+				template.NamedParameters = append(template.NamedParameters, *param)
 			}
 		}
 	}
