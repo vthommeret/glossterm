@@ -219,6 +219,7 @@ const (
 
 // lexText scans until a header or template delimiter.
 func lexText(l *lexer) stateFn {
+Loop:
 	for {
 		for i := headers; i > 0; i-- {
 			delim := strings.Repeat(headerDelim, i)
@@ -248,8 +249,16 @@ func lexText(l *lexer) stateFn {
 			l.ignore()
 			return lexLeftTemplate
 		}
-		if l.next() == eof {
-			break
+		switch r := l.next(); {
+		case r == eof:
+			break Loop
+		case isEndOfLine(r):
+			if l.pos > l.start {
+				l.emit(itemText)
+			}
+			continue Loop
+		default:
+			// absorb
 		}
 	}
 	// Correctly reached EOF.
