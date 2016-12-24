@@ -2,6 +2,7 @@ package ml
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"unicode/utf8"
 )
@@ -366,6 +367,8 @@ func lexParam(l *lexer) stateFn {
 
 	var inLink bool
 
+	var nestedTpl bool
+
 Loop:
 	for {
 		switch r := l.next(); {
@@ -462,14 +465,32 @@ Loop:
 			if openCloseTag {
 				openCloseTag = false
 			}
+		case r == '{':
+			if !inTag {
+				if n := l.peek(); n == '{' {
+					nestedTpl = true
+					log.Fatalf("nested tpl")
+				}
+			}
+			if openStartTag {
+				openStartTag = false
+			}
+			if openCloseTag {
+				openCloseTag = false
+			}
 		case r == '}':
 			if !inTag {
 				if n := l.peek(); n == '}' {
-					l.backup()
-					if !emittedEndOfLineParam {
-						l.emitParam(kv)
+					if nestedTpl {
+						nestedTpl = false
+						log.Fatalf("nested tpl 2")
+					} else {
+						l.backup()
+						if !emittedEndOfLineParam {
+							l.emitParam(kv)
+						}
+						break Loop
 					}
-					break Loop
 				}
 			}
 			if openStartTag {
