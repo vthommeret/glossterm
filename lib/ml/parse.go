@@ -30,6 +30,29 @@ type Descendant struct {
 	Word     string
 }
 
+func (w *Word) IsEmpty() bool {
+	return w.Languages == nil
+}
+
+func (l *Language) IsEmpty() bool {
+	if l.Descendants != nil {
+		return false
+	}
+	if l.Etymology.Mentions != nil {
+		return false
+	}
+	if l.Etymology.Borrows != nil {
+		return false
+	}
+	if l.Etymology.Prefixes != nil {
+		return false
+	}
+	if l.Etymology.Suffixes != nil {
+		return false
+	}
+	return true
+}
+
 type sectionType int
 
 const (
@@ -63,7 +86,7 @@ Parse:
 		case itemError:
 			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
 		case itemEOF:
-			if language != nil {
+			if language != nil && !language.IsEmpty() {
 				w.Languages = append(w.Languages, *language)
 			}
 			break Parse
@@ -76,7 +99,7 @@ Parse:
 				subSection = unknownSection
 				sectionDepth = -1
 			} else if i.depth == 2 {
-				if language != nil {
+				if language != nil && !language.IsEmpty() {
 					w.Languages = append(w.Languages, *language)
 				}
 				language = &Language{}
@@ -138,8 +161,10 @@ Parse:
 					case "bor", "borrowing":
 						borrow := template.ToBorrow()
 						if _, ok := langMap[borrow.Lang]; ok {
-							language.Etymology.Borrows =
-								append(language.Etymology.Borrows, borrow)
+							if _, ok := langMap[borrow.FromLang]; ok {
+								language.Etymology.Borrows =
+									append(language.Etymology.Borrows, borrow)
+							}
 						}
 					case "prefix":
 						prefix := template.ToPrefix()

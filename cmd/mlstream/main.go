@@ -10,7 +10,8 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-const total = 5393162
+const total = 200000 // approximate
+const step = total / 100
 
 var langs = []string{"en", "es", "fr", "la"}
 
@@ -35,6 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to open %q input file: %s", inputFile, err)
 	}
+	defer in.Close()
 
 	pages := make(chan ml.Page, 10)
 	errors := make(chan ml.Error, 10)
@@ -59,9 +61,12 @@ Loop:
 				fmt.Printf("\nUnable to parse %q page: %s\n", p.Title, err)
 				continue
 			}
+			if w.IsEmpty() {
+				continue
+			}
 			words = append(words, w)
 			count++
-			if count == 1 || count%50000 == 0 {
+			if count == 1 || count%step == 0 {
 				fmt.Printf("\r%.1f%% (%d)", 100*float32(count)/total, count)
 			}
 		}
