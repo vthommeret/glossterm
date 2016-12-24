@@ -343,16 +343,18 @@ Loop:
 		case r == eof:
 			return l.errorf("unclosed action (lexParam)")
 		case isEndOfLine(r):
-			l.backup()
 			if emittedEndOfLineParam {
 				emittedEndOfLineParam = false
-			} else if l.pos > l.start {
-				l.emitParam(kv)
-				emittedEndOfLineParam = true
+			} else if n := l.peek(); n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+				l.backup()
+				if l.pos > l.start {
+					l.emitParam(kv)
+					emittedEndOfLineParam = true
+				}
+				l.pos += Pos(1)
+				l.ignore()
+				kv = false
 			}
-			l.pos += Pos(1)
-			l.ignore()
-			kv = false
 		case r == '=':
 			l.backup()
 			l.emit(itemParamName)
