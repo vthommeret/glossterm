@@ -2,7 +2,6 @@ package ml
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"unicode/utf8"
 )
@@ -357,7 +356,7 @@ func lexParam(l *lexer) stateFn {
 	l.pos += Pos(len(paramDelim))
 	l.ignore()
 
-	var kv bool
+	var inNamedParam bool
 	var emittedEndOfLineParam bool
 
 	var openStartTag bool
@@ -380,12 +379,12 @@ Loop:
 			} else if n := l.peek(); n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
 				l.backup()
 				if l.pos > l.start {
-					l.emitParam(kv)
+					l.emitParam(inNamedParam)
 					emittedEndOfLineParam = true
 				}
 				l.pos += Pos(1)
 				l.ignore()
-				kv = false
+				inNamedParam = false
 			}
 		case r == '<':
 			if openStartTag {
@@ -434,12 +433,12 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '=':
-			if !inTag {
+			if !inTag && !inNamedParam {
 				l.backup()
 				l.emit(itemParamName)
 				l.pos += Pos(len(paramEqual))
 				l.ignore()
-				kv = true
+				inNamedParam = true
 			}
 			if openStartTag {
 				openStartTag = false
@@ -448,16 +447,16 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '|':
-			if !inTag && !inLink {
+			if !inTag && !inLink && !nestedTpl {
 				l.backup()
 				if emittedEndOfLineParam {
 					emittedEndOfLineParam = false
 				} else {
-					l.emitParam(kv)
+					l.emitParam(inNamedParam)
 				}
 				l.pos += Pos(len(paramDelim))
 				l.ignore()
-				kv = false
+				inNamedParam = false
 			}
 			if openStartTag {
 				openStartTag = false
@@ -469,7 +468,6 @@ Loop:
 			if !inTag {
 				if n := l.peek(); n == '{' {
 					nestedTpl = true
-					log.Fatalf("nested tpl")
 				}
 			}
 			if openStartTag {
@@ -479,18 +477,15 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '}':
-			if !inTag {
-				if n := l.peek(); n == '}' {
-					if nestedTpl {
-						nestedTpl = false
-						log.Fatalf("nested tpl 2")
-					} else {
-						l.backup()
-						if !emittedEndOfLineParam {
-							l.emitParam(kv)
-						}
-						break Loop
+			if n := l.peek(); n == '}' {
+				if nestedTpl {
+					nestedTpl = false
+				} else {
+					l.backup()
+					if !emittedEndOfLineParam {
+						l.emitParam(inNamedParam)
 					}
+					break Loop
 				}
 			}
 			if openStartTag {
@@ -514,8 +509,8 @@ Loop:
 	return lexAction
 }
 
-func (l *lexer) emitParam(kv bool) {
-	if kv {
+func (l *lexer) emitParam(inNamedParam bool) {
+	if inNamedParam {
 		l.emit(itemParamValue)
 	} else {
 		l.emit(itemParam)
