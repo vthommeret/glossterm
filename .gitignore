@@ -2,3 +2,4 @@
 *.gob
 *.lex
 *.parse
+.DS_Store
