@@ -165,3 +165,26 @@ Parse:
 
 	return w, nil
 }
+
+// FilterLangs filters specific languages.
+func (w *Word) FilterLangs(filters []string) {
+	langMap := make(map[string]bool)
+	for _, l := range filters {
+		langMap[l] = true
+	}
+	var langs []Language
+	for _, l := range w.Languages {
+		if _, ok := langMap[l.Code]; ok {
+			var descendants []tpl.Link
+			for _, d := range l.Descendants {
+				if _, ok := langMap[d.Lang]; ok {
+					descendants = append(descendants, d)
+				}
+			}
+			l.Descendants = descendants
+			langs = append(langs, l)
+		}
+	}
+	w.Languages = langs
+
+}

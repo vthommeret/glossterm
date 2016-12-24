@@ -40,7 +40,7 @@ Loop:
 			if err != nil {
 				log.Fatalf("Unable to parse page: %s", err)
 			}
-			filterLangs(&w, langs)
+			w.FilterLangs(langs)
 
 			b, err := json.MarshalIndent(w, "", "  ")
 			if err != nil {
@@ -49,18 +49,4 @@ Loop:
 			fmt.Printf("%s\n", string(b))
 		}
 	}
-}
-
-func filterLangs(w *ml.Word, langs []string) {
-	langMap := make(map[string]bool)
-	for _, l := range langs {
-		langMap[l] = true
-	}
-	var filtered []ml.Language
-	for _, l := range w.Languages {
-		if _, ok := langMap[l.Name]; ok {
-			filtered = append(filtered, l)
-		}
-	}
-	w.Languages = filtered
 }

@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/vthommeret/memory.limited/lib/ml"
-	"github.com/vthommeret/memory.limited/lib/tpl"
 )
 
 var langs = []string{"en", "es", "fr", "la"}
@@ -47,7 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}
-	filterLangs(&w, langs)
+	w.FilterLangs(langs)
 
 	b, err := json.MarshalIndent(w, "", "  ")
 	if err != nil {
@@ -55,25 +54,4 @@ func main() {
 	}
 
 	fmt.Println(string(b))
-}
-
-func filterLangs(w *ml.Word, filters []string) {
-	langMap := make(map[string]bool)
-	for _, l := range filters {
-		langMap[l] = true
-	}
-	var langs []ml.Language
-	for _, l := range w.Languages {
-		if _, ok := langMap[l.Code]; ok {
-			var descendants []tpl.Link
-			for _, d := range l.Descendants {
-				if _, ok := langMap[d.Lang]; ok {
-					descendants = append(descendants, d)
-				}
-			}
-			l.Descendants = descendants
-			langs = append(langs, l)
-		}
-	}
-	w.Languages = langs
 }
