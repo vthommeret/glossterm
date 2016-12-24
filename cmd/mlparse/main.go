@@ -42,11 +42,10 @@ func main() {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := ml.Parse(p)
+	w, err := ml.Parse(p, ml.ToLangMap(langs))
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}
-	w.FilterLangs(langs)
 
 	b, err := json.MarshalIndent(w, "", "  ")
 	if err != nil {

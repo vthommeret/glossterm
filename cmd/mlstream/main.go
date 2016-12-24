@@ -36,7 +36,7 @@ Loop:
 		case <-done:
 			break Loop
 		case p := <-pages:
-			w, err := ml.Parse(p)
+			w, err := ml.Parse(p, ml.ToLangMap(langs))
 			if err != nil {
 				log.Fatalf("Unable to parse page: %s", err)
 			}

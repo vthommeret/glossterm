@@ -38,7 +38,7 @@ const (
 	descendantsSection
 )
 
-func Parse(p Page) (Word, error) {
+func Parse(p Page, langMap map[string]bool) (Word, error) {
 	w := Word{
 		Name: p.Title,
 	}
@@ -94,7 +94,11 @@ Parse:
 		case itemText:
 			if inLanguageHeader {
 				if lang, ok := CanonicalLangs[i.val]; ok {
-					language.Code = lang.Code
+					if _, ok := langMap[lang.Code]; ok {
+						language.Code = lang.Code
+					} else {
+						language = nil
+					}
 				} else {
 					language = nil
 				}
@@ -126,29 +130,41 @@ Parse:
 				if language != nil {
 					switch template.Action {
 					case "m", "mention":
-						language.Etymology.Mentions = append(language.Etymology.Mentions,
-							template.ToMention(),
-						)
+						mention := template.ToMention()
+						if _, ok := langMap[mention.Lang]; ok {
+							language.Etymology.Mentions =
+								append(language.Etymology.Mentions, mention)
+						}
 					case "bor", "borrowing":
-						language.Etymology.Borrows = append(language.Etymology.Borrows,
-							template.ToBorrow(),
-						)
+						borrow := template.ToBorrow()
+						if _, ok := langMap[borrow.Lang]; ok {
+							language.Etymology.Borrows =
+								append(language.Etymology.Borrows, borrow)
+						}
 					case "prefix":
-						language.Etymology.Prefixes = append(language.Etymology.Prefixes,
-							template.ToPrefix(),
-						)
+						prefix := template.ToPrefix()
+						if _, ok := langMap[prefix.Lang]; ok {
+							language.Etymology.Prefixes =
+								append(language.Etymology.Prefixes, prefix)
+						}
 					case "suffix":
-						language.Etymology.Suffixes = append(language.Etymology.Suffixes,
-							template.ToSuffix(),
-						)
+						suffix := template.ToSuffix()
+						if _, ok := langMap[suffix.Lang]; ok {
+							language.Etymology.Suffixes =
+								append(language.Etymology.Suffixes, suffix)
+						}
 					}
 				}
 			} else if subSection == descendantsSection {
 				switch template.Action {
 				case "l", "link":
-					language.Descendants = append(language.Descendants,
-						template.ToLink(),
-					)
+					if language != nil {
+						link := template.ToLink()
+						if _, ok := langMap[link.Lang]; ok {
+							language.Descendants =
+								append(language.Descendants, link)
+						}
+					}
 				}
 			}
 		case itemAction:
@@ -166,25 +182,3 @@ Parse:
 	return w, nil
 }
 
-// FilterLangs filters specific languages.
-func (w *Word) FilterLangs(filters []string) {
-	langMap := make(map[string]bool)
-	for _, l := range filters {
-		langMap[l] = true
-	}
-	var langs []Language
-	for _, l := range w.Languages {
-		if _, ok := langMap[l.Code]; ok {
-			var descendants []tpl.Link
-			for _, d := range l.Descendants {
-				if _, ok := langMap[d.Lang]; ok {
-					descendants = append(descendants, d)
-				}
-			}
-			l.Descendants = descendants
-			langs = append(langs, l)
-		}
-	}
-	w.Languages = langs
-
-}
