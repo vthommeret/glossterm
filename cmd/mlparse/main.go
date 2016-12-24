@@ -11,6 +11,8 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
+var langs = []string{"English", "Spanish", "Latin"}
+
 func main() {
 	stat, err := os.Stdin.Stat()
 	if err != nil {
@@ -44,7 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}
-	filterLangs(&w, []string{"English", "Spanish"})
+	filterLangs(&w, langs)
 
 	b, err := json.MarshalIndent(w, "", "  ")
 	if err != nil {
