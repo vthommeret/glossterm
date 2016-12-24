@@ -410,8 +410,12 @@ Loop:
 				l.ignore()
 				kv = true
 			}
-			openStartTag = false
-			openCloseTag = false
+			if openStartTag {
+				openStartTag = false
+			}
+			if openCloseTag {
+				openCloseTag = false
+			}
 		case r == '|':
 			if !inTag {
 				l.backup()
@@ -424,8 +428,12 @@ Loop:
 				l.ignore()
 				kv = false
 			}
-			openStartTag = false
-			openCloseTag = false
+			if openStartTag {
+				openStartTag = false
+			}
+			if openCloseTag {
+				openCloseTag = false
+			}
 		case r == '}':
 			if !inTag {
 				if n := l.peek(); n == '}' {
@@ -436,12 +444,20 @@ Loop:
 					break Loop
 				}
 			}
-			openStartTag = false
-			openCloseTag = false
+			if openStartTag {
+				openStartTag = false
+			}
+			if openCloseTag {
+				openCloseTag = false
+			}
 		default:
 			if !isAlphaNumeric(r) {
-				openStartTag = false
-				openCloseTag = false
+				if openStartTag {
+					openStartTag = false
+				}
+				if openCloseTag {
+					openCloseTag = false
+				}
 			}
 			// absorb.
 		}
