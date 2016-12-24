@@ -331,11 +331,13 @@ Loop:
 			l.pos += Pos(1)
 			l.ignore()
 		case r == '}':
-			l.backup()
-			if l.pos > l.start {
-				l.emit(itemAction)
+			if n := l.peek(); n == '}' {
+				l.backup()
+				if l.pos > l.start {
+					l.emit(itemAction)
+				}
+				break Loop
 			}
-			break Loop
 		case r == '|':
 			l.backup()
 			if l.pos > l.start {
