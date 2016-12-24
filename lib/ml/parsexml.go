@@ -50,7 +50,6 @@ func ParseXMLWord(r io.Reader, w string) (*Page, error) {
 func ParseXML(r io.Reader, pages chan<- Page, errors chan<- Error, done chan<- bool) {
 	d := xml.NewDecoder(r)
 
-	i := 0
 Parse:
 	for {
 		t, err := d.Token()
@@ -75,11 +74,6 @@ Parse:
 				}
 
 				pages <- p
-				i++
-
-				if i == count {
-					break Parse
-				}
 			}
 		}
 	}

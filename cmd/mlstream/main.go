@@ -1,7 +1,8 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/gob"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -9,44 +10,74 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
+const total = 5393162
+
 var langs = []string{"en", "es", "fr", "la"}
 
+var outputFile string
+var inputFile string
+
+func init() {
+	flag.StringVar(&inputFile, "i", "", "Input file (xml format)")
+	flag.StringVar(&outputFile, "o", "", "Output file (gob format)")
+	flag.Parse()
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatalf("Must specify file.")
+	if inputFile == "" {
+		log.Fatalf("Must specify input file (-i)")
+	}
+	if outputFile == "" {
+		log.Fatalf("Must specify output file (-o)")
 	}
 
-	fp := os.Args[1]
-	f, err := os.Open(fp)
+	in, err := os.Open(inputFile)
 	if err != nil {
-		log.Fatalf("Unable to open fp: %s", err)
+		log.Fatalf("Unable to open %q input file: %s", inputFile, err)
 	}
 
 	pages := make(chan ml.Page, 10)
 	errors := make(chan ml.Error, 10)
 	done := make(chan bool)
 
-	go ml.ParseXML(f, pages, errors, done)
+	count := 0
+
+	go ml.ParseXML(in, pages, errors, done)
+
+	var words []ml.Word
 
 Loop:
 	for {
 		select {
 		case e := <-errors:
-			log.Fatalf("Unable to parse XML: %s", e.Message)
+			log.Fatalf("\nUnable to parse XML: %s", e.Message)
 		case <-done:
 			break Loop
 		case p := <-pages:
 			w, err := ml.Parse(p, ml.ToLangMap(langs))
 			if err != nil {
-				log.Fatalf("Unable to parse page: %s", err)
+				fmt.Printf("\nUnable to parse %q page: %s\n", p.Title, err)
+				continue
 			}
-			w.FilterLangs(langs)
-
-			b, err := json.MarshalIndent(w, "", "  ")
-			if err != nil {
-				log.Fatalf("Unable to marshal JSON: %s", err)
+			words = append(words, w)
+			count++
+			if count == 1 || count%50000 == 0 {
+				fmt.Printf("\r%.1f%% (%d)", 100*float32(count)/total, count)
 			}
-			fmt.Printf("%s\n", string(b))
 		}
+	}
+
+	fmt.Printf("\n%d total words\n", count)
+
+	out, err := os.Create(outputFile)
+	if err != nil {
+		log.Fatalf("Unable to open %q file: %s", outputFile, out)
+	}
+	defer out.Close()
+
+	enc := gob.NewEncoder(out)
+	err = enc.Encode(words)
+	if err != nil {
+		log.Fatalf("Unable to encode words: %s", err)
 	}
 }
