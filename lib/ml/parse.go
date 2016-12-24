@@ -13,7 +13,7 @@ type Word struct {
 }
 
 type Language struct {
-	Name      string
+	Code      string
 	Etymology Etymology
 }
 
@@ -84,7 +84,11 @@ Parse:
 			}
 		case itemText:
 			if inLanguageHeader {
-				language.Name = i.val
+				if lang, ok := CanonicalLangs[i.val]; ok {
+					language.Code = lang.Code
+				} else {
+					language = nil
+				}
 				sectionType = unknownSection
 			} else if inSectionHeader {
 				if sectionDepth == 2 {

@@ -11,7 +11,7 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-var langs = []string{"English", "Spanish", "Latin"}
+var langs = []string{"en", "es", "fr", "la"}
 
 func main() {
 	stat, err := os.Stdin.Stat()
@@ -63,7 +63,7 @@ func filterLangs(w *ml.Word, langs []string) {
 	}
 	var filtered []ml.Language
 	for _, l := range w.Languages {
-		if _, ok := langMap[l.Name]; ok {
+		if _, ok := langMap[l.Code]; ok {
 			filtered = append(filtered, l)
 		}
 	}

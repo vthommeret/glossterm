@@ -9,7 +9,7 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-var langs = []string{"English", "Spanish", "Latin"}
+var langs = []string{"en", "es", "fr", "la"}
 
 func main() {
 	if len(os.Args) < 2 {
