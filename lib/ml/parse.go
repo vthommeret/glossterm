@@ -13,8 +13,9 @@ type Word struct {
 }
 
 type Language struct {
-	Code      string
-	Etymology Etymology
+	Code        string
+	Etymology   Etymology
+	Descendants []tpl.Link
 }
 
 type Etymology struct {
@@ -24,11 +25,17 @@ type Etymology struct {
 	Suffixes []tpl.Suffix
 }
 
+type Descendant struct {
+	Language string
+	Word     string
+}
+
 type sectionType int
 
 const (
 	unknownSection sectionType = iota
 	etymologySection
+	descendantsSection
 )
 
 func Parse(p Page) (Word, error) {
@@ -39,7 +46,8 @@ func Parse(p Page) (Word, error) {
 	var inLanguageHeader bool
 	var inSectionHeader bool
 
-	var sectionType sectionType
+	var section sectionType
+	var subSection sectionType
 	var sectionDepth int = -1
 
 	var language *Language
@@ -64,7 +72,8 @@ Parse:
 				language = nil
 				inLanguageHeader = false
 				inSectionHeader = false
-				sectionType = unknownSection
+				section = unknownSection
+				subSection = unknownSection
 				sectionDepth = -1
 			} else if i.depth == 2 {
 				if language != nil {
@@ -89,25 +98,31 @@ Parse:
 				} else {
 					language = nil
 				}
-				sectionType = unknownSection
+				section = unknownSection
+				subSection = unknownSection
 			} else if inSectionHeader {
 				if sectionDepth == 2 {
 					if strings.HasPrefix(i.val, "Etymology") {
-						sectionType = etymologySection
+						section = etymologySection
 					} else {
-						sectionType = unknownSection
+						section = unknownSection
 					}
+					subSection = unknownSection
 				} else {
 					// This will exclude subsections of "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
-					sectionType = unknownSection
+					section = unknownSection
+
+					if sectionDepth == 3 && i.val == "Descendants" {
+						subSection = descendantsSection
+					} else {
+						subSection = unknownSection
+					}
 				}
 			}
 		case itemLeftTemplate:
-			if sectionType == etymologySection {
-				template = &tpl.Template{}
-			}
+			template = &tpl.Template{}
 		case itemRightTemplate:
-			if sectionType == etymologySection {
+			if section == etymologySection {
 				if language != nil {
 					switch template.Action {
 					case "m", "mention":
@@ -128,24 +143,23 @@ Parse:
 						)
 					}
 				}
+			} else if subSection == descendantsSection {
+				switch template.Action {
+				case "l", "link":
+					language.Descendants = append(language.Descendants,
+						template.ToLink(),
+					)
+				}
 			}
 		case itemAction:
-			if sectionType == etymologySection {
-				template.Action = i.val
-			}
+			template.Action = i.val
 		case itemParam:
-			if sectionType == etymologySection {
-				template.Parameters = append(template.Parameters, i.val)
-			}
+			template.Parameters = append(template.Parameters, i.val)
 		case itemParamName:
-			if sectionType == etymologySection {
-				param = &tpl.Parameter{Name: i.val}
-			}
+			param = &tpl.Parameter{Name: i.val}
 		case itemParamValue:
-			if sectionType == etymologySection {
-				param.Value = i.val
-				template.NamedParameters = append(template.NamedParameters, *param)
-			}
+			param.Value = i.val
+			template.NamedParameters = append(template.NamedParameters, *param)
 		}
 	}
 

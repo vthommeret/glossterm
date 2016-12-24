@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/memory.limited/lib/tpl"
 )
 
 var langs = []string{"en", "es", "fr", "la"}
@@ -56,16 +57,23 @@ func main() {
 	fmt.Println(string(b))
 }
 
-func filterLangs(w *ml.Word, langs []string) {
+func filterLangs(w *ml.Word, filters []string) {
 	langMap := make(map[string]bool)
-	for _, l := range langs {
+	for _, l := range filters {
 		langMap[l] = true
 	}
-	var filtered []ml.Language
+	var langs []ml.Language
 	for _, l := range w.Languages {
 		if _, ok := langMap[l.Code]; ok {
-			filtered = append(filtered, l)
+			var descendants []tpl.Link
+			for _, d := range l.Descendants {
+				if _, ok := langMap[d.Lang]; ok {
+					descendants = append(descendants, d)
+				}
+			}
+			l.Descendants = descendants
+			langs = append(langs, l)
 		}
 	}
-	w.Languages = filtered
+	w.Languages = langs
 }
