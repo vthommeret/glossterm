@@ -51,7 +51,7 @@ func main() {
 		log.Fatalf("Unable to marshal JSON: %s", err)
 	}
 
-	fmt.Printf(string(b))
+	fmt.Println(string(b))
 }
 
 func filterLangs(w *ml.Word, langs []string) {
