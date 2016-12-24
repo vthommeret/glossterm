@@ -370,13 +370,13 @@ Loop:
 			l.ignore()
 			kv = false
 		case r == '}':
-			l.backup()
-			if emittedEndOfLineParam {
-				emittedEndOfLineParam = false
-			} else {
-				l.emitParam(kv)
+			if n := l.peek(); n == '}' {
+				l.backup()
+				if !emittedEndOfLineParam {
+					l.emitParam(kv)
+				}
+				break Loop
 			}
-			break Loop
 		default:
 			// absorb.
 		}
