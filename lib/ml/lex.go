@@ -71,6 +71,26 @@ var itemName = map[itemType]string{
 	itemRightTemplate: "right template",
 }
 
+// From http://w3c.github.io/html/syntax.html#void-elements
+var voidTags = []string{
+	"area",
+	"base",
+	"br",
+	"col",
+	"embed",
+	"hr",
+	"img",
+	"input",
+	"link",
+	"menuitem",
+	"meta",
+	"param",
+	"source",
+	"track",
+	"wbr",
+}
+var voidTagMap = map[string]bool{}
+
 func (i itemType) String() string {
 	s := itemName[i]
 	if s == "" {
@@ -340,6 +360,7 @@ func lexParam(l *lexer) stateFn {
 	var openStartTag bool
 	var inTag bool
 	var openCloseTag bool
+	var openStartTagPos Pos
 
 Loop:
 	for {
@@ -367,10 +388,14 @@ Loop:
 				openCloseTag = true
 			} else {
 				openStartTag = true
+				openStartTagPos = l.pos
 			}
 		case r == '>':
 			if openStartTag {
-				inTag = true
+				tag := l.input[openStartTagPos : l.pos-1]
+				if _, ok := voidTagMap[tag]; !ok {
+					inTag = true
+				}
 				openStartTag = false
 			} else if inTag {
 				inTag = false
@@ -440,4 +465,10 @@ func isEndOfLine(r rune) bool {
 // isAlphaNumeric reports whether r is an ASCII letter or digit.
 func isAlphaNumeric(r rune) bool {
 	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+}
+
+func init() {
+	for _, t := range voidTags {
+		voidTagMap[t] = true
+	}
 }
