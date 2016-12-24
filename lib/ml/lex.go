@@ -362,6 +362,8 @@ func lexParam(l *lexer) stateFn {
 	var openCloseTag bool
 	var openStartTagPos Pos
 
+	var inLink bool
+
 Loop:
 	for {
 		switch r := l.next(); {
@@ -402,6 +404,30 @@ Loop:
 			} else if openCloseTag {
 				openCloseTag = false
 			}
+		case r == '[':
+			if !inTag {
+				if n := l.peek(); n == '[' {
+					inLink = true
+				}
+			}
+			if openStartTag {
+				openStartTag = false
+			}
+			if openCloseTag {
+				openCloseTag = false
+			}
+		case r == ']':
+			if !inTag {
+				if n := l.peek(); n == ']' {
+					inLink = false
+				}
+			}
+			if openStartTag {
+				openStartTag = false
+			}
+			if openCloseTag {
+				openCloseTag = false
+			}
 		case r == '=':
 			if !inTag {
 				l.backup()
@@ -417,7 +443,7 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '|':
-			if !inTag {
+			if !inTag && !inLink {
 				l.backup()
 				if emittedEndOfLineParam {
 					emittedEndOfLineParam = false
