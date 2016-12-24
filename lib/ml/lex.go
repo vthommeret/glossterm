@@ -3,7 +3,6 @@ package ml
 import (
 	"fmt"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -438,7 +437,7 @@ func isEndOfLine(r rune) bool {
 	return r == '\r' || r == '\n'
 }
 
-// isAlphaNumeric reports whether r is an alphabetic, digit.
+// isAlphaNumeric reports whether r is an ASCII letter or digit.
 func isAlphaNumeric(r rune) bool {
-	return unicode.IsLetter(r) || unicode.IsDigit(r)
+	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
 }
