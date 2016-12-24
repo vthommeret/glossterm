@@ -12,9 +12,10 @@ type Redirect struct {
 }
 
 type Page struct {
-	Title string   `xml:"title"`
-	Redir Redirect `xml:"redirect"`
-	Text  string   `xml:"revision>text"`
+	XMLName xml.Name
+	Title   string   `xml:"title"`
+	Redir   Redirect `xml:"redirect"`
+	Text    string   `xml:"revision>text"`
 }
 
 type Error struct {
@@ -62,6 +63,7 @@ Parse:
 		if t == nil {
 			break
 		}
+
 		switch se := t.(type) {
 		case xml.StartElement:
 			if se.Name.Local == "page" {
