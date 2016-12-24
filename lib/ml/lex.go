@@ -3,6 +3,7 @@ package ml
 import (
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -337,6 +338,10 @@ func lexParam(l *lexer) stateFn {
 	var kv bool
 	var emittedEndOfLineParam bool
 
+	var openStartTag bool
+	var inTag bool
+	var openCloseTag bool
+
 Loop:
 	for {
 		switch r := l.next(); {
@@ -355,31 +360,65 @@ Loop:
 				l.ignore()
 				kv = false
 			}
-		case r == '=':
-			l.backup()
-			l.emit(itemParamName)
-			l.pos += Pos(len(paramEqual))
-			l.ignore()
-			kv = true
-		case r == '|':
-			l.backup()
-			if emittedEndOfLineParam {
-				emittedEndOfLineParam = false
+		case r == '<':
+			if openStartTag {
+				openStartTag = false
+			} else if inTag {
+				inTag = false
+				openCloseTag = true
 			} else {
-				l.emitParam(kv)
+				openStartTag = true
 			}
-			l.pos += Pos(len(paramDelim))
-			l.ignore()
-			kv = false
-		case r == '}':
-			if n := l.peek(); n == '}' {
+		case r == '>':
+			if openStartTag {
+				inTag = true
+				openStartTag = false
+			} else if inTag {
+				inTag = false
+			} else if openCloseTag {
+				openCloseTag = false
+			}
+		case r == '=':
+			if !inTag {
 				l.backup()
-				if !emittedEndOfLineParam {
+				l.emit(itemParamName)
+				l.pos += Pos(len(paramEqual))
+				l.ignore()
+				kv = true
+			}
+			openStartTag = false
+			openCloseTag = false
+		case r == '|':
+			if !inTag {
+				l.backup()
+				if emittedEndOfLineParam {
+					emittedEndOfLineParam = false
+				} else {
 					l.emitParam(kv)
 				}
-				break Loop
+				l.pos += Pos(len(paramDelim))
+				l.ignore()
+				kv = false
 			}
+			openStartTag = false
+			openCloseTag = false
+		case r == '}':
+			if !inTag {
+				if n := l.peek(); n == '}' {
+					l.backup()
+					if !emittedEndOfLineParam {
+						l.emitParam(kv)
+					}
+					break Loop
+				}
+			}
+			openStartTag = false
+			openCloseTag = false
 		default:
+			if !isAlphaNumeric(r) {
+				openStartTag = false
+				openCloseTag = false
+			}
 			// absorb.
 		}
 	}
@@ -397,4 +436,9 @@ func (l *lexer) emitParam(kv bool) {
 // isEndOfLine reports whether r is an end-of-line character.
 func isEndOfLine(r rune) bool {
 	return r == '\r' || r == '\n'
+}
+
+// isAlphaNumeric reports whether r is an alphabetic, digit.
+func isAlphaNumeric(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
