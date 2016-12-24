@@ -301,8 +301,15 @@ func lexAction(l *lexer) stateFn {
 Loop:
 	for {
 		switch r := l.next(); {
-		case r == eof || isEndOfLine(r):
-			return l.errorf("unclosed action")
+		case r == eof:
+			return l.errorf("unclosed action (lexAction)")
+		case isEndOfLine(r):
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemAction)
+			}
+			l.pos += Pos(1)
+			l.ignore()
 		case r == '}':
 			l.backup()
 			if l.pos > l.start {
@@ -328,11 +335,24 @@ func lexParam(l *lexer) stateFn {
 	l.ignore()
 
 	var kv bool
+	var emittedEndOfLineParam bool
+
 Loop:
 	for {
 		switch r := l.next(); {
-		case r == eof || isEndOfLine(r):
-			return l.errorf("unclosed action")
+		case r == eof:
+			return l.errorf("unclosed action (lexParam)")
+		case isEndOfLine(r):
+			l.backup()
+			if emittedEndOfLineParam {
+				emittedEndOfLineParam = false
+			} else if l.pos > l.start {
+				l.emitParam(kv)
+				emittedEndOfLineParam = true
+			}
+			l.pos += Pos(1)
+			l.ignore()
+			kv = false
 		case r == '=':
 			l.backup()
 			l.emit(itemParamName)
@@ -341,13 +361,21 @@ Loop:
 			kv = true
 		case r == '|':
 			l.backup()
-			l.emitParam(kv)
+			if emittedEndOfLineParam {
+				emittedEndOfLineParam = false
+			} else {
+				l.emitParam(kv)
+			}
 			l.pos += Pos(len(paramDelim))
 			l.ignore()
 			kv = false
 		case r == '}':
 			l.backup()
-			l.emitParam(kv)
+			if emittedEndOfLineParam {
+				emittedEndOfLineParam = false
+			} else {
+				l.emitParam(kv)
+			}
 			break Loop
 		default:
 			// absorb.
