@@ -45,6 +45,10 @@ body {
       li a:hover, li a:hover mark {
         color: #E5AB00;
       }
+  p {}
+    p em {
+      color: #999;
+    }
     </style>
   </head>
   <body>
@@ -56,20 +60,30 @@ body {
 
     <ul class="results"></ul>
 
+    <p class="definition"></p>
+
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.3/lodash.min.js"></script>
     <script type="text/javascript">
 var form = $('.search-form');
 var input = $('.search');
 var results = $('.results');
+var definition = $('.definition');
 
 var action = form.attr('action');
 var lastQuery = '';
 var lastXhr;
 
-var tpl = _.template(
+var resultsTpl = _.template(
   '<% _.each(hits, function(hit) { %>' +
     '<li><a href="/words/<%- hit.id %>" data-word="<%- hit.id %>"><% if (hit.fragments.Name) { %><%= hit.fragments.Name %><% } else { %><mark><%- hit.id %></mark><% } %></a></li>' +
+  '<% }); %>'
+);
+
+var definitionTpl = _.template(
+  '<em>from <%- from.Word %> (<%- from.Lang %>)</em><br>' +
+  '<% _.each(descendants, function(d) { %>' +
+    '<%- d.Word %> (<%- d.Lang %>)<br>' +
   '<% }); %>'
 );
 
@@ -84,6 +98,7 @@ input.on('keyup', function(e) {
     lastQuery = query;
     if (query === '') {
       results.empty();
+      definition.empty();
     } else {
       search(query);
     }
@@ -95,6 +110,7 @@ results.on('click', 'a', function(e) {
   var word = $(this).data('word');
   input.val(word);
   results.empty();
+  definition.empty();
 });
 
 function search(query) {
@@ -104,10 +120,16 @@ function search(query) {
     dataType: 'json',
     data: {query: query},
     success: function(data) {
-      if (!data.success) {
-        return;
+      switch (data.type) {
+        case 'results':
+          results.html(resultsTpl(data.results));
+          definition.empty();
+          break;
+        case 'descendants':
+          results.empty();
+          definition.html(definitionTpl(data));
+          break;
       }
-      results.html(tpl(data.results));
     }
   });
 }
