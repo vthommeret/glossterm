@@ -14,6 +14,7 @@ const total = 200000 // approximate
 const step = total / 100
 
 var langs = []string{"en", "es", "fr", "la"}
+var langMap map[string]bool
 
 var outputFile string
 var inputFile string
@@ -22,6 +23,7 @@ func init() {
 	flag.StringVar(&inputFile, "i", "", "Input file (xml format)")
 	flag.StringVar(&outputFile, "o", "", "Output file (gob format)")
 	flag.Parse()
+	langMap = ml.ToLangMap(langs)
 }
 
 func main() {
@@ -56,7 +58,7 @@ Loop:
 		case <-done:
 			break Loop
 		case p := <-pages:
-			w, err := ml.Parse(p, ml.ToLangMap(langs))
+			w, err := ml.Parse(p, langMap)
 			if err != nil {
 				fmt.Printf("\nUnable to parse %q page: %s\n", p.Title, err)
 				continue

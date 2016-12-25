@@ -12,6 +12,11 @@ import (
 )
 
 var langs = []string{"en", "es", "fr", "la"}
+var langMap map[string]bool
+
+func init() {
+	langMap = ml.ToLangMap(langs)
+}
 
 func main() {
 	stat, err := os.Stdin.Stat()
@@ -42,7 +47,7 @@ func main() {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := ml.Parse(p, ml.ToLangMap(langs))
+	w, err := ml.Parse(p, langMap)
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}
