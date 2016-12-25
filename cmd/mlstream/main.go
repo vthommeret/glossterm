@@ -55,6 +55,8 @@ func main() {
 		files = append(files, file)
 	}
 
+	nBuckets := len(files)
+
 	// Whether stderr is redirected to a file.
 	stat, err := os.Stderr.Stat()
 	if err != nil {
@@ -67,6 +69,7 @@ func main() {
 	done := make(chan bool)
 
 	count := 0
+	completed := 0
 
 	for _, f := range files {
 		go ml.ParseXML(f, pages, errors, done)
@@ -80,7 +83,10 @@ Loop:
 		case e := <-errors:
 			log.Fatalf("\nUnable to parse XML: %s", e.Message)
 		case <-done:
-			break Loop
+			completed++
+			if completed == nBuckets {
+				break Loop
+			}
 		case p := <-pages:
 			w, err := ml.Parse(p, langMap)
 			if err != nil {
