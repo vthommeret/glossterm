@@ -11,6 +11,7 @@ import (
 var normalizer transform.Transformer
 
 func init() {
+	// See https://blog.golang.org/normalization
 	normalizer = transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
 }
 
@@ -33,6 +34,7 @@ func Type() string {
 	return "word"
 }
 
+// Filter out diacritics for search.
 func normalize(w string) string {
 	s, _, _ := transform.String(normalizer, w)
 	return s
