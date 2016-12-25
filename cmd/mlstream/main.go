@@ -75,7 +75,7 @@ func main() {
 		go ml.ParseXML(f, pages, errors, done)
 	}
 
-	var words []ml.Word
+	words := make(map[string]*ml.Word)
 
 Loop:
 	for {
@@ -101,7 +101,7 @@ Loop:
 			if w.IsEmpty() {
 				continue
 			}
-			words = append(words, w)
+			words[w.Name] = &w
 			count++
 			if count == 1 || count%step == 0 {
 				fmt.Printf("\r%.1f%% (%d)", 100*float32(count)/total, count)

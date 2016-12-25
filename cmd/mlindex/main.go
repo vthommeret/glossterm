@@ -29,7 +29,7 @@ func main() {
 
 	dec := gob.NewDecoder(f)
 
-	var words []*ml.Word
+	var words map[string]*ml.Word
 	err = dec.Decode(&words)
 	if err != nil {
 		log.Fatalf("Unable to decode gob: %s", err)
@@ -65,7 +65,7 @@ func main() {
 	}
 }
 
-func indexWords(input string, i bleve.Index, ws []*ml.Word) error {
+func indexWords(input string, i bleve.Index, ws map[string]*ml.Word) error {
 	log.Printf("Indexing %s...", input)
 	batch := i.NewBatch()
 	batchCount := 0
