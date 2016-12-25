@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -17,8 +16,8 @@ import (
 	"github.com/vthommeret/memory.limited/lib/tpl"
 )
 
-const defaultWordsPath = "words.gob"
-const defaultIndexPath = "words.bleve"
+const defaultWordsPath = "data/words.gob"
+const defaultIndexPath = "data/words.bleve"
 const defaultPort = 8080
 
 var wordsPath string
@@ -45,32 +44,34 @@ func main() {
 		port = intPort
 	}
 
-	f, err := os.Open(wordsPath)
+	// Get words
+	ws, err := ml.GetWords(wordsPath)
 	if err != nil {
-		log.Fatalf("Unable to open %q words: %s", wordsPath, err)
+		log.Fatalf("Unable to get words: %s", err)
 	}
+	words = ws
 
-	dec := gob.NewDecoder(f)
-
-	var decoded map[string]*ml.Word
-	err = dec.Decode(&decoded)
-	if err != nil {
-		log.Fatalf("Unable to decode gob: %s", err)
+	// Get index
+	index, err = ml.GetIndex(indexPath)
+	if err == bleve.ErrorIndexPathDoesNotExist {
+		index, err = ml.CreateIndex(indexPath)
+		if err != nil {
+			log.Fatalf("Unable to create index: %s", err)
+		}
+		err := ml.Index(index, words)
+		if err != nil {
+			log.Fatalf("Unable to index words: %s", err)
+		}
+	} else if err != nil {
+		log.Fatalf("Unable to get index: %s", err)
 	}
-	f.Close()
-
-	words = decoded
-
-	bleveIndex, err := bleve.Open(indexPath)
-	if err != nil {
-		log.Fatalf("Unable to open %q index: %s", indexPath, err)
-	}
-	index = bleveIndex
 	defer index.Close()
 
+	// Setup handlers
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/search", searchHandler)
 
+	// Listen
 	log.Printf("Listening on port %d.", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }

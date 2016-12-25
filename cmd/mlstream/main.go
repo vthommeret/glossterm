@@ -1,9 +1,11 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/gob"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,7 +15,7 @@ import (
 )
 
 const defaultInputFile = "cmd/mlsplit/words.xml"
-const defaultOutputFile = "words.gob"
+const defaultOutputFile = "data/words.gob"
 
 const total = 200000 // approximate
 const step = total / 100
@@ -31,6 +33,10 @@ func init() {
 }
 
 func main() {
+	outputExt := filepath.Ext(outputFile)
+	outputBase := strings.TrimSuffix(outputFile, outputExt)
+	outputCompressedFile := fmt.Sprintf("%s.gob.gz", outputBase)
+
 	ext := filepath.Ext(inputFile)
 	base := strings.TrimSuffix(inputFile, ext)
 
@@ -106,15 +112,31 @@ Loop:
 
 	fmt.Printf("\n%d total words\n", count)
 
+	// Gob writer
 	out, err := os.Create(outputFile)
 	if err != nil {
-		log.Fatalf("Unable to open %q file: %s", outputFile, out)
+		log.Fatalf("Unable to create %q file: %s", outputFile, out)
 	}
 	defer out.Close()
 
-	enc := gob.NewEncoder(out)
+	// Gzip writer
+	outCompressed, err := os.Create(outputCompressedFile)
+	if err != nil {
+		log.Fatalf("Unable to create %q file: %s", outputCompressedFile, out)
+	}
+	defer outCompressed.Close()
+	gw := gzip.NewWriter(outCompressed)
+	defer gw.Close()
+
+	// Multi writer
+	w := io.MultiWriter(out, gw)
+
+	// Write gob and gzip simultaneously.
+	enc := gob.NewEncoder(w)
 	err = enc.Encode(words)
 	if err != nil {
 		log.Fatalf("Unable to encode words: %s", err)
 	}
+
+	fmt.Printf("Wrote %q and %q\n", outputFile, outputCompressedFile)
 }

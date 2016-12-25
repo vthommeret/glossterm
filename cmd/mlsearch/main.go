@@ -7,9 +7,10 @@ import (
 
 	"github.com/blevesearch/bleve"
 	_ "github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
+	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-const defaultIndexPath = "words.bleve"
+const defaultIndexPath = "data/words.bleve"
 
 var indexPath string
 
@@ -29,10 +30,11 @@ func main() {
 	}
 	q := args[0]
 
-	index, err := bleve.Open(indexPath)
-	if err != nil {
-		log.Fatalf("Unable to open %q index: %s", indexPath, err)
+	index, err := ml.GetIndex(indexPath)
+	if err == bleve.ErrorIndexPathDoesNotExist {
+		log.Fatalf("Unable to get index: %s", err)
 	}
+	defer index.Close()
 
 	query := bleve.NewPrefixQuery(q)
 	search := bleve.NewSearchRequest(query)
