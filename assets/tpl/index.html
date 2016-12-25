@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style type="text/css">
+body {
+  margin: 60px 45px;
+  font: 36px "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+}
+  .logo {
+    padding: 3px 5px 2px;
+    font-size: 13px;
+    background: #F9DC08;
+    border-radius: 3px;
+    position: fixed;
+    top: 74px;
+    right: 45px;
+  }
+    .logo strong {
+      font-weight: 600;
+    }
+  input.search {
+    font: inherit;
+    font-size: inherit;
+    font-weight: 500;
+    outline: none;
+    border: none;
+    display: block;
+  }
+  ul {
+    padding: 0;
+    list-style: none;
+  }
+    li {
+      color: #999;
+    }
+      li mark {
+        color: #000;
+        background: none;
+      }
+      li a {
+        text-decoration: none;
+        color: inherit;
+      }
+      li a:hover, li:hover mark {
+        color: #E5AB00;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo"><strong>root</strong>word</div>
+
+    <form action="/search" class="search-form">
+      <input type="text" placeholder="Search" class="search">
+    </form>
+
+    <ul class="results"></ul>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.3/lodash.min.js"></script>
+    <script type="text/javascript">
+var form = $('.search-form');
+var input = $('.search');
+var results = $('.results');
+
+var action = form.attr('action');
+var lastQuery = '';
+var lastXhr;
+
+var tpl = _.template(
+  '<% _.each(hits, function(hit) { %>' +
+    '<li><a href="/words/<%- hit.id %>" data-word="<%- hit.id %>"><% if (hit.fragments.Name) { %><%= hit.fragments.Name %><% } else { %><mark><%- hit.id %></mark><% } %></a></li>' +
+  '<% }); %>'
+);
+
+input.focus();
+
+input.on('keyup', function(e) {
+  var query = $.trim(input.val());
+  if (query != lastQuery) {
+    if (lastXhr) {
+      lastXhr.abort();
+    }
+    lastQuery = query;
+    if (query === '') {
+      results.empty();
+    } else {
+      search(query);
+    }
+  }
+});
+
+results.on('click', 'a', function(e) {
+  e.preventDefault();
+  var word = $(this).data('word');
+  input.val(word);
+  results.empty();
+});
+
+function search(query) {
+  lastXhr = $.ajax({
+    url: action,
+    type: 'GET',
+    dataType: 'json',
+    data: {query: query},
+    success: function(data) {
+      if (!data.success) {
+        return;
+      }
+      results.html(tpl(data.results));
+    }
+  });
+}
+    </script>
+  </body>
+</html>
