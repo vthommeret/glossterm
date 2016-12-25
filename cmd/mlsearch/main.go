@@ -9,10 +9,12 @@ import (
 	_ "github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 )
 
+const defaultIndexPath = "words.bleve"
+
 var indexPath string
 
 func init() {
-	flag.StringVar(&indexPath, "i", "", "Index path (bleve format)")
+	flag.StringVar(&indexPath, "i", defaultIndexPath, "Index path (bleve format)")
 	flag.Parse()
 }
 

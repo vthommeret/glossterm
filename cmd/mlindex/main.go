@@ -11,17 +11,20 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
+const defaultInput = "words.gob"
 const indexPath = "words.bleve"
 const batchSize = 1000
 
 func main() {
+	var input string
 	if len(os.Args) < 2 {
-		log.Fatalf("Must specify file.")
+		input = defaultInput
+	} else {
+		input = os.Args[1]
 	}
-	fp := os.Args[1]
-	f, err := os.Open(fp)
+	f, err := os.Open(input)
 	if err != nil {
-		log.Fatalf("Unable to open fp: %s", err)
+		log.Fatalf("Unable to open %q input: %s", input, err)
 	}
 
 	dec := gob.NewDecoder(f)
@@ -56,14 +59,14 @@ func main() {
 		log.Fatalf("Unable to open %q index: %s", indexPath, err)
 	}
 
-	err = indexWords(index, words)
+	err = indexWords(input, index, words)
 	if err != nil {
 		log.Fatalf("Unable to index words: %s", err)
 	}
 }
 
-func indexWords(i bleve.Index, ws []*ml.Word) error {
-	log.Printf("Indexing...")
+func indexWords(input string, i bleve.Index, ws []*ml.Word) error {
+	log.Printf("Indexing %s...", input)
 	batch := i.NewBatch()
 	batchCount := 0
 	count := 0
