@@ -24,13 +24,13 @@ type Error struct {
 
 const count = 1
 
-func ParseXMLWord(r io.Reader, w string) (*Page, error) {
+func ParseXMLWord(r io.ReadCloser, w string, pages chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 	for {
 		t, err := d.Token()
 		if err != nil {
 			if err != io.EOF {
-				return nil, err
+				errors <- Error{fmt.Sprintf("unable to decode token: %s", err)}
 			}
 			break
 		}
@@ -40,15 +40,15 @@ func ParseXMLWord(r io.Reader, w string) (*Page, error) {
 				var p Page
 				d.DecodeElement(&p, &se)
 				if p.Title == w {
-					return &p, nil
+					pages <- p
 				}
 			}
 		}
 	}
-	return nil, nil
+	done <- r
 }
 
-func ParseXML(r io.Reader, pages chan<- Page, errors chan<- Error, done chan<- bool) {
+func ParseXML(r io.ReadCloser, pages chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 
 Parse:
@@ -80,5 +80,5 @@ Parse:
 		}
 	}
 
-	done <- true
+	done <- r
 }

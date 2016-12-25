@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -37,14 +38,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unable to open %q input file: %s", inputFile, err)
 	}
-	defer in.Close()
 
 	nBuckets := runtime.NumCPU()
 	buckets := make([][]ml.Page, nBuckets)
 
 	pages := make(chan ml.Page, 10)
 	errors := make(chan ml.Error, 10)
-	done := make(chan bool)
+	done := make(chan io.ReadCloser)
 
 	go ml.ParseXML(in, pages, errors, done)
 
@@ -56,7 +56,8 @@ Loop:
 		select {
 		case e := <-errors:
 			log.Fatalf("\nUnable to parse XML: %s", e.Message)
-		case <-done:
+		case f := <-done:
+			f.Close()
 			break Loop
 		case p := <-pages:
 			if i > nBuckets-1 {

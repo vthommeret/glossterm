@@ -37,25 +37,10 @@ func main() {
 	outputBase := strings.TrimSuffix(outputFile, outputExt)
 	outputCompressedFile := fmt.Sprintf("%s.gob.gz", outputBase)
 
-	ext := filepath.Ext(inputFile)
-	base := strings.TrimSuffix(inputFile, ext)
-
-	filePaths, err := filepath.Glob(fmt.Sprintf("%s-*%s", base, ext))
+	files, err := ml.GetSplitFiles(inputFile)
 	if err != nil {
-		log.Fatalf("Invalid glob: %s", err)
+		log.Fatalf("Unable to get split files: %s", err)
 	}
-
-	var files []*os.File
-
-	for _, filePath := range filePaths {
-		file, err := os.Open(filePath)
-		if err != nil {
-			log.Fatalf("Unable to open %q input file: %s", filePath, err)
-		}
-		defer file.Close()
-		files = append(files, file)
-	}
-
 	nBuckets := len(files)
 
 	// Whether stderr is redirected to a file.
@@ -67,7 +52,7 @@ func main() {
 
 	pages := make(chan ml.Page, 10)
 	errors := make(chan ml.Error, 10)
-	done := make(chan bool)
+	done := make(chan io.ReadCloser)
 
 	count := 0
 	completed := 0
@@ -83,7 +68,8 @@ Loop:
 		select {
 		case e := <-errors:
 			log.Fatalf("\nUnable to parse XML: %s", e.Message)
-		case <-done:
+		case f := <-done:
+			f.Close()
 			completed++
 			if completed == nBuckets {
 				break Loop
