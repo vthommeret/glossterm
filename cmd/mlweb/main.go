@@ -66,6 +66,7 @@ func main() {
 		log.Fatalf("Unable to open %q index: %s", indexPath, err)
 	}
 	index = bleveIndex
+	defer index.Close()
 
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/search", searchHandler)
