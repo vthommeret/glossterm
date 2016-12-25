@@ -21,6 +21,7 @@ type Language struct {
 type Etymology struct {
 	Mentions []tpl.Mention
 	Borrows  []tpl.Borrow
+	Derived  []tpl.Derived
 	Prefixes []tpl.Prefix
 	Suffixes []tpl.Suffix
 }
@@ -37,6 +38,9 @@ func (l *Language) IsEmpty() bool {
 		return false
 	}
 	if l.Etymology.Borrows != nil {
+		return false
+	}
+	if l.Etymology.Derived != nil {
 		return false
 	}
 	if l.Etymology.Prefixes != nil {
@@ -159,6 +163,14 @@ Parse:
 							if _, ok := langMap[borrow.FromLang]; ok {
 								language.Etymology.Borrows =
 									append(language.Etymology.Borrows, borrow)
+							}
+						}
+					case "der", "derived":
+						derived := template.ToDerived()
+						if _, ok := langMap[derived.Lang]; ok {
+							if _, ok := langMap[derived.FromLang]; ok {
+								language.Etymology.Derived =
+									append(language.Etymology.Derived, derived)
 							}
 						}
 					case "prefix":
