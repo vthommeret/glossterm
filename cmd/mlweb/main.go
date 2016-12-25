@@ -128,25 +128,46 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
+type From struct {
+	Lang string
+	Word string
+}
+
 // Latin descendants of Spanish words.
-func latinDescendants(w *ml.Word) (from *tpl.Mention, descendants []tpl.Link) {
+func latinDescendants(w *ml.Word) (from *From, descendants []tpl.Link) {
+	var mention *tpl.Mention
+	var derived *tpl.Derived
+
 Loop:
 	for _, l := range w.Languages {
-		if l.Code == "es" && l.Etymology.Mentions != nil {
+		if l.Code == "es" {
 			for _, m := range l.Etymology.Mentions {
 				if m.Lang == "la" {
-					from = &m
+					mention = &m
+					break Loop
+				}
+			}
+			for _, d := range l.Etymology.Derived {
+				if d.FromLang == "la" || d.FromLang == "LL" { // Latin or Late Latin.
+					derived = &d
 					break Loop
 				}
 			}
 		}
 	}
-	if from == nil {
+	var wordName string
+	if mention != nil {
+		wordName = mention.Word
+		from = &From{mention.Lang, mention.Word}
+	} else if derived != nil {
+		wordName = derived.FromWord
+		from = &From{derived.FromLang, derived.FromWord}
+	} else {
 		return nil, nil
 	}
-	if w, ok := words[from.Word]; ok {
+	if w, ok := words[wordName]; ok {
 		for _, l := range w.Languages {
-			if l.Code == "la" && l.Descendants != nil {
+			if l.Code == "la" {
 				for _, d := range l.Descendants {
 					if d.Lang != "es" {
 						descendants = append(descendants, d)
