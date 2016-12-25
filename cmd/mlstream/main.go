@@ -12,6 +12,9 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
+const defaultInputFile = "cmd/mlsplit/words.xml"
+const defaultOutputFile = "words.gob"
+
 const total = 200000 // approximate
 const step = total / 100
 
@@ -22,20 +25,13 @@ var inputFile string
 var outputFile string
 
 func init() {
-	flag.StringVar(&inputFile, "i", "", "Input file (xml format)")
-	flag.StringVar(&outputFile, "o", "", "Output file (gob format)")
+	flag.StringVar(&inputFile, "i", defaultInputFile, "Input file (xml format)")
+	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (gob format)")
 	flag.Parse()
 	langMap = ml.ToLangMap(langs)
 }
 
 func main() {
-	if inputFile == "" {
-		log.Fatalf("Must specify input file (-i)")
-	}
-	if outputFile == "" {
-		log.Fatalf("Must specify output file (-o)")
-	}
-
 	ext := filepath.Ext(inputFile)
 	base := strings.TrimSuffix(inputFile, ext)
 
