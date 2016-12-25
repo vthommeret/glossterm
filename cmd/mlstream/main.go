@@ -43,6 +43,10 @@ func main() {
 	}
 	nBuckets := len(files)
 
+	if nBuckets == 0 {
+		log.Fatalf("No split files found for %q.", inputFile)
+	}
+
 	// Whether stderr is redirected to a file.
 	stat, err := os.Stderr.Stat()
 	if err != nil {

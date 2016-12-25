@@ -33,6 +33,10 @@ func main() {
 	}
 	nBuckets := len(files)
 
+	if nBuckets == 0 {
+		log.Fatalf("No split files found for %q.", inputFile)
+	}
+
 	pages := make(chan ml.Page)
 	errors := make(chan ml.Error)
 	done := make(chan io.ReadCloser)
