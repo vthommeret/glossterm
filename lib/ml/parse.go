@@ -25,11 +25,6 @@ type Etymology struct {
 	Suffixes []tpl.Suffix
 }
 
-type Descendant struct {
-	Language string
-	Word     string
-}
-
 func (w *Word) IsEmpty() bool {
 	return w.Languages == nil
 }
