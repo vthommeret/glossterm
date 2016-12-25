@@ -188,7 +188,7 @@ func (l *lexer) NextItem() item {
 // NewLexer creates a new scanner for the input string.
 func NewLexer(input string) *lexer {
 	l := &lexer{
-		input: normalize(input),
+		input: normalizeInput(input),
 		items: make(chan item),
 	}
 	go l.run()
@@ -214,7 +214,7 @@ func (l *lexer) Print() {
 }
 
 // Simplifies parsing.
-func normalize(s string) string {
+func normalizeInput(s string) string {
 	return fmt.Sprintf("\n%s\n", strings.TrimSpace(s))
 }
 
