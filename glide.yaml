@@ -1,0 +1,4 @@
+package: github.com/vthommeret/memory.limited
+import:
+- package: github.com/blevesearch/bleve
+  version: ^0.5.0

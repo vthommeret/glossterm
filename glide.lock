@@ -1,0 +1,70 @@
+hash: 373324a10016e7c01e0671cbfa99a880f37d7eb66b23f66cad504da1d1f3481d
+updated: 2016-12-24T20:41:46.726492471-08:00
+imports:
+- name: github.com/blevesearch/bleve
+  version: 97393d027342f43b17da2f02c090a4e728ac929f
+  subpackages:
+  - analysis
+  - analysis/analyzers/simple_analyzer
+  - analysis/analyzers/standard_analyzer
+  - analysis/datetime_parsers/datetime_optional
+  - analysis/datetime_parsers/flexible_go
+  - analysis/language/en
+  - analysis/token_filters/lower_case_filter
+  - analysis/token_filters/porter
+  - analysis/token_filters/stop_tokens_filter
+  - analysis/tokenizers/character
+  - analysis/tokenizers/letter
+  - analysis/tokenizers/unicode
+  - document
+  - index
+  - index/store
+  - index/store/boltdb
+  - index/store/gtreap
+  - index/upside_down
+  - numeric_util
+  - registry
+  - search
+  - search/collectors
+  - search/facets
+  - search/highlight
+  - search/highlight/fragment_formatters/html
+  - search/highlight/fragmenters/simple
+  - search/highlight/highlighters/html
+  - search/highlight/highlighters/simple
+  - search/scorers
+  - search/searchers
+- name: github.com/blevesearch/go-porterstemmer
+  version: 23a2c8e5cf1f380f27722c6d2ae8896431dc7d0e
+  repo: https://github.com/blevesearch/go-porterstemmer
+- name: github.com/blevesearch/segment
+  version: db70c57796cc8c310613541dfade3dce627d09c7
+  repo: https://github.com/blevesearch/segment
+- name: github.com/boltdb/bolt
+  version: 144418e1475d8bf7abbdc48583500f1a20c62ea7
+  repo: https://github.com/boltdb/bolt
+- name: github.com/golang/protobuf
+  version: 655cdfa588ea190e901bc5590e65d5621688847c
+  repo: https://github.com/golang/protobuf
+  subpackages:
+  - proto
+- name: github.com/steveyen/gtreap
+  version: 0abe01ef9be25c4aedc174758ec2d917314d6d70
+  repo: https://github.com/steveyen/gtreap
+- name: golang.org/x/net
+  version: e45385e9b226f570b1f086bf287b25d3d4117776
+  repo: https://go.googlesource.com/net
+  subpackages:
+  - context
+- name: golang.org/x/sys
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  subpackages:
+  - unix
+- name: golang.org/x/text
+  version: 5ee49cfe751141f8017047bab800d1f528ee3be1
+  repo: https://go.googlesource.com/text
+  subpackages:
+  - runes
+  - transform
+  - unicode/norm
+testImports: []
