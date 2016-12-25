@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
@@ -16,8 +18,8 @@ const step = total / 100
 var langs = []string{"en", "es", "fr", "la"}
 var langMap map[string]bool
 
-var outputFile string
 var inputFile string
+var outputFile string
 
 func init() {
 	flag.StringVar(&inputFile, "i", "", "Input file (xml format)")
@@ -34,11 +36,31 @@ func main() {
 		log.Fatalf("Must specify output file (-o)")
 	}
 
-	in, err := os.Open(inputFile)
+	ext := filepath.Ext(inputFile)
+	base := strings.TrimSuffix(inputFile, ext)
+
+	filePaths, err := filepath.Glob(fmt.Sprintf("%s-*%s", base, ext))
 	if err != nil {
-		log.Fatalf("Unable to open %q input file: %s", inputFile, err)
+		log.Fatalf("Invalid glob: %s", err)
 	}
-	defer in.Close()
+
+	var files []*os.File
+
+	for _, filePath := range filePaths {
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Fatalf("Unable to open %q input file: %s", filePath, err)
+		}
+		defer file.Close()
+		files = append(files, file)
+	}
+
+	// Whether stderr is redirected to a file.
+	stat, err := os.Stderr.Stat()
+	if err != nil {
+		log.Fatalf("Unable to stat stderr.")
+	}
+	errFile := (stat.Mode() & os.ModeCharDevice) == 0
 
 	pages := make(chan ml.Page, 10)
 	errors := make(chan ml.Error, 10)
@@ -46,7 +68,9 @@ func main() {
 
 	count := 0
 
-	go ml.ParseXML(in, pages, errors, done)
+	for _, f := range files {
+		go ml.ParseXML(f, pages, errors, done)
+	}
 
 	var words []ml.Word
 
@@ -60,7 +84,12 @@ Loop:
 		case p := <-pages:
 			w, err := ml.Parse(p, langMap)
 			if err != nil {
-				fmt.Printf("\nUnable to parse %q page: %s\n", p.Title, err)
+				var prefix string
+				if !errFile {
+					prefix = "\n"
+				}
+				fmt.Fprintf(os.Stderr,
+					"%sUnable to parse %q page: %s\n", prefix, p.Title, err)
 				continue
 			}
 			if w.IsEmpty() {
