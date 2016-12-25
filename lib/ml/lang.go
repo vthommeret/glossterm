@@ -1,5 +1,7 @@
 package ml
 
+var DefaultLangs = []string{"en", "es", "fr", "la", "LL"}
+
 type Lang struct {
 	Code      string
 	Canonical string

@@ -11,11 +11,10 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-var langs = []string{"en", "es", "fr", "la"}
 var langMap map[string]bool
 
 func init() {
-	langMap = ml.ToLangMap(langs)
+	langMap = ml.ToLangMap(ml.DefaultLangs)
 }
 
 func main() {

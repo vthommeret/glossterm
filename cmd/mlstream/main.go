@@ -18,7 +18,6 @@ const defaultOutputFile = "words.gob"
 const total = 200000 // approximate
 const step = total / 100
 
-var langs = []string{"en", "es", "fr", "la"}
 var langMap map[string]bool
 
 var inputFile string
@@ -28,7 +27,7 @@ func init() {
 	flag.StringVar(&inputFile, "i", defaultInputFile, "Input file (xml format)")
 	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (gob format)")
 	flag.Parse()
-	langMap = ml.ToLangMap(langs)
+	langMap = ml.ToLangMap(ml.DefaultLangs)
 }
 
 func main() {
