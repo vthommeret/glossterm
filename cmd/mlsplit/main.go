@@ -17,21 +17,20 @@ import (
 const total = 5500000 // approximate
 const step = total / 100
 
+const defaultOutputFile = "cmd/mlsplit/pages.xml"
+
 var inputFile string
 var outputFile string
 
 func init() {
 	flag.StringVar(&inputFile, "i", "", "Input file (xml format)")
-	flag.StringVar(&outputFile, "o", "", "Output file (xml format)")
+	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (xml format)")
 	flag.Parse()
 }
 
 func main() {
 	if inputFile == "" {
 		log.Fatalf("Must specify input file (-i)")
-	}
-	if outputFile == "" {
-		log.Fatalf("Must specify out file (-o)")
 	}
 
 	in, err := os.Open(inputFile)
@@ -42,11 +41,11 @@ func main() {
 	nBuckets := runtime.NumCPU()
 	buckets := make([][]ml.Page, nBuckets)
 
-	pages := make(chan ml.Page, 10)
-	errors := make(chan ml.Error, 10)
-	done := make(chan io.ReadCloser)
+	pagesCh := make(chan ml.Page, 10)
+	errorsCh := make(chan ml.Error, 10)
+	doneCh := make(chan io.ReadCloser)
 
-	go ml.ParseXML(in, pages, errors, done)
+	go ml.ParseXMLPages(in, pagesCh, errorsCh, doneCh)
 
 	i := 0
 	count := 0
@@ -54,12 +53,12 @@ func main() {
 Loop:
 	for {
 		select {
-		case e := <-errors:
+		case e := <-errorsCh:
 			log.Fatalf("\nUnable to parse XML: %s", e.Message)
-		case f := <-done:
+		case f := <-doneCh:
 			f.Close()
 			break Loop
-		case p := <-pages:
+		case p := <-pagesCh:
 			if i > nBuckets-1 {
 				i = 0
 			}

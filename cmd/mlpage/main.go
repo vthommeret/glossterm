@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/gob"
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
@@ -11,7 +11,7 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-const defaultInput = "cmd/mlsplit/words.xml"
+const defaultInput = "cmd/mlsplit/pages.xml"
 
 var inputFile string
 
@@ -23,9 +23,9 @@ func init() {
 func main() {
 	args := flag.Args()
 	if len(args) == 0 {
-		log.Fatalf("Must specify word.")
+		log.Fatalf("Must specify page title.")
 	}
-	w := args[0]
+	t := args[0]
 
 	files, err := ml.GetSplitFiles(inputFile)
 	if err != nil {
@@ -37,43 +37,44 @@ func main() {
 		log.Fatalf("No split files found for %q.", inputFile)
 	}
 
-	pages := make(chan ml.Page)
-	errors := make(chan ml.Error)
-	done := make(chan io.ReadCloser)
+	pageCh := make(chan ml.Page)
+	errorsCh := make(chan ml.Error)
+	doneCh := make(chan io.ReadCloser)
 
 	completed := 0
 
 	for _, f := range files {
-		go ml.ParseXMLWord(f, w, pages, errors, done)
+		go ml.ParseXMLPage(f, t, pageCh, errorsCh, doneCh)
 	}
 
-	var word *ml.Page
+	var page *ml.Page
 
 Loop:
 	for {
 		select {
-		case e := <-errors:
+		case e := <-errorsCh:
 			log.Fatalf("\nUnable to parse XML: %s", e.Message)
-		case f := <-done:
+		case f := <-doneCh:
 			f.Close()
 			completed++
 			if completed == nBuckets {
 				break Loop
 			}
-		case p := <-pages:
-			word = &p
+		case p := <-pageCh:
+			page = &p
 			break Loop
 		}
 	}
 
-	if word == nil {
+	if page == nil {
 		fmt.Println("Unable to find word.")
 		os.Exit(1)
 	}
 
-	enc := gob.NewEncoder(os.Stdout)
-	err = enc.Encode(word)
+	e := xml.NewEncoder(os.Stdout)
+	e.Indent("", "  ")
+	err = e.Encode(page)
 	if err != nil {
-		log.Fatalf("Unable to encode word: %s", err)
+		log.Fatalf("Unable to XML encode word: %s", err)
 	}
 }

@@ -14,13 +14,11 @@ import (
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 
-const defaultInputFile = "cmd/mlsplit/words.xml"
+const defaultInputFile = "cmd/mlsplit/pages.xml"
 const defaultOutputFile = "data/words.gob"
 
 const total = 200000 // approximate
 const step = total / 100
-
-var langMap map[string]bool
 
 var inputFile string
 var outputFile string
@@ -29,7 +27,6 @@ func init() {
 	flag.StringVar(&inputFile, "i", defaultInputFile, "Input file (xml format)")
 	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (gob format)")
 	flag.Parse()
-	langMap = ml.ToLangMap(ml.DefaultLangs)
 }
 
 func main() {
@@ -54,15 +51,15 @@ func main() {
 	}
 	errFile := (stat.Mode() & os.ModeCharDevice) == 0
 
-	pages := make(chan ml.Page, 10)
-	errors := make(chan ml.Error, 10)
-	done := make(chan io.ReadCloser)
+	wordsCh := make(chan ml.Word, 10)
+	errorsCh := make(chan ml.Error, 10)
+	doneCh := make(chan io.ReadCloser)
 
 	count := 0
 	completed := 0
 
 	for _, f := range files {
-		go ml.ParseXML(f, pages, errors, done)
+		go ml.ParseXMLWords(f, wordsCh, errorsCh, doneCh)
 	}
 
 	words := make(map[string]*ml.Word)
@@ -70,28 +67,23 @@ func main() {
 Loop:
 	for {
 		select {
-		case e := <-errors:
-			log.Fatalf("\nUnable to parse XML: %s", e.Message)
-		case f := <-done:
+		case e := <-errorsCh:
+			if e.Fatal {
+				log.Fatalf("\nError parsing words: %s", e.Message)
+			} else {
+				var prefix string
+				if !errFile {
+					prefix = "\n"
+				}
+				fmt.Fprintf(os.Stderr, "%sError parsing words: %s\n", prefix, e.Message)
+			}
+		case f := <-doneCh:
 			f.Close()
 			completed++
 			if completed == nBuckets {
 				break Loop
 			}
-		case p := <-pages:
-			w, err := ml.Parse(p, langMap)
-			if err != nil {
-				var prefix string
-				if !errFile {
-					prefix = "\n"
-				}
-				fmt.Fprintf(os.Stderr,
-					"%sUnable to parse %q page: %s\n", prefix, p.Title, err)
-				continue
-			}
-			if w.IsEmpty() {
-				continue
-			}
+		case w := <-wordsCh:
 			words[w.Name] = &w
 			count++
 			if count == 1 || count%step == 0 {

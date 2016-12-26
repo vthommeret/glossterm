@@ -20,17 +20,20 @@ type Page struct {
 
 type Error struct {
 	Message string
+	Fatal   bool
 }
 
 const count = 1
 
-func ParseXMLWord(r io.ReadCloser, w string, pages chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
+// ParseXMLPage returns page for cmd/mlpage.
+func ParseXMLPage(r io.ReadCloser, title string, page chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
+Parse:
 	for {
 		t, err := d.Token()
 		if err != nil {
 			if err != io.EOF {
-				errors <- Error{fmt.Sprintf("unable to decode token: %s", err)}
+				errors <- Error{fmt.Sprintf("unable to decode token: %s", err), true}
 			}
 			break
 		}
@@ -39,8 +42,9 @@ func ParseXMLWord(r io.ReadCloser, w string, pages chan<- Page, errors chan<- Er
 			if se.Name.Local == "page" {
 				var p Page
 				d.DecodeElement(&p, &se)
-				if p.Title == w {
-					pages <- p
+				if p.Title == title {
+					page <- p
+					break Parse
 				}
 			}
 		}
@@ -48,7 +52,8 @@ func ParseXMLWord(r io.ReadCloser, w string, pages chan<- Page, errors chan<- Er
 	done <- r
 }
 
-func ParseXML(r io.ReadCloser, pages chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
+// ParseXMLPages returns pages for cmd/mlsplit.
+func ParseXMLPages(r io.ReadCloser, pages chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 
 Parse:
@@ -56,26 +61,53 @@ Parse:
 		t, err := d.Token()
 		if err != nil {
 			if err != io.EOF {
-				errors <- Error{fmt.Sprintf("unable to decode token: %s", err)}
+				errors <- Error{fmt.Sprintf("unable to decode token: %s", err), true}
 			}
 			break
 		}
-		if t == nil {
-			break
-		}
-
 		switch se := t.(type) {
 		case xml.StartElement:
 			if se.Name.Local == "page" {
 				var p Page
 				d.DecodeElement(&p, &se)
-
 				// Exclude namespaced pages.
 				if strings.Contains(p.Title, ":") {
 					continue Parse
 				}
-
 				pages <- p
+			}
+		}
+	}
+
+	done <- r
+}
+
+// ParseXMLWords returns words for cmd/mlstream.
+func ParseXMLWords(r io.ReadCloser, words chan<- Word, errors chan<- Error, done chan<- io.ReadCloser) {
+	d := xml.NewDecoder(r)
+
+Parse:
+	for {
+		t, err := d.Token()
+		if err != nil {
+			if err != io.EOF {
+				errors <- Error{fmt.Sprintf("unable to decode token: %s", err), true}
+			}
+			break
+		}
+		switch se := t.(type) {
+		case xml.StartElement:
+			if se.Name.Local == "page" {
+				var p Page
+				d.DecodeElement(&p, &se)
+				w, err := Parse(p, DefaultLangMap)
+				if err != nil {
+					errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
+					continue Parse
+				} else if w.IsEmpty() {
+					continue Parse
+				}
+				words <- w
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/gob"
+	"encoding/xml"
 	"io"
 	"log"
 	"os"
@@ -30,12 +30,12 @@ func main() {
 		}
 	}
 
-	dec := gob.NewDecoder(f)
+	d := xml.NewDecoder(f)
 
 	var p ml.Page
-	err = dec.Decode(&p)
+	err = d.Decode(&p)
 	if err != nil {
-		log.Fatalf("Unable to unmarshal JSON: %s", err)
+		log.Fatalf("Unable to decode XML: %s", err)
 	}
 
 	l := ml.NewLexer(p.Text)

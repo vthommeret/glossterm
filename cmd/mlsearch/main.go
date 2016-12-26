@@ -32,7 +32,7 @@ func main() {
 
 	index, err := ml.GetIndex(indexPath)
 	if err == bleve.ErrorIndexPathDoesNotExist {
-		log.Fatalf("Unable to get index: %s", err)
+		log.Fatalf("Unable to get %q index: %s", indexPath, err)
 	}
 	defer index.Close()
 

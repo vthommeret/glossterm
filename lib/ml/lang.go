@@ -1,6 +1,14 @@
 package ml
 
 var DefaultLangs = []string{"en", "es", "fr", "la", "LL"}
+var DefaultLangMap map[string]bool
+
+func init() {
+	DefaultLangMap = make(map[string]bool)
+	for _, l := range DefaultLangs {
+		DefaultLangMap[l] = true
+	}
+}
 
 type Lang struct {
 	Code      string

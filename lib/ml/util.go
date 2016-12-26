@@ -7,14 +7,6 @@ import (
 	"strings"
 )
 
-func ToLangMap(ls []string) map[string]bool {
-	m := make(map[string]bool)
-	for _, l := range ls {
-		m[l] = true
-	}
-	return m
-}
-
 func GetSplitFiles(pathTemplate string) (files []*os.File, err error) {
 	ext := filepath.Ext(pathTemplate)
 	base := strings.TrimSuffix(pathTemplate, ext)

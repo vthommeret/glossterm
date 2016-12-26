@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/gob"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
@@ -10,12 +10,6 @@ import (
 
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
-
-var langMap map[string]bool
-
-func init() {
-	langMap = ml.ToLangMap(ml.DefaultLangs)
-}
 
 func main() {
 	stat, err := os.Stdin.Stat()
@@ -38,15 +32,15 @@ func main() {
 		}
 	}
 
-	dec := gob.NewDecoder(f)
+	d := xml.NewDecoder(f)
 
 	var p ml.Page
-	err = dec.Decode(&p)
+	err = d.Decode(&p)
 	if err != nil {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := ml.Parse(p, langMap)
+	w, err := ml.Parse(p, ml.DefaultLangMap)
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}
