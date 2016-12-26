@@ -51,20 +51,7 @@ func main() {
 	words = ws
 
 	// Get index
-	index, err = ml.GetIndex(indexPath)
-	if err == bleve.ErrorIndexPathDoesNotExist {
-		index, err = ml.CreateIndex(indexPath)
-		if err != nil {
-			log.Fatalf("Unable to create index: %s", err)
-		}
-		err := ml.Index(index, words)
-		if err != nil {
-			log.Fatalf("Unable to index words: %s", err)
-		}
-	} else if err != nil {
-		log.Fatalf("Unable to get index: %s", err)
-	}
-	defer index.Close()
+	go setupIndex(indexPath)
 
 	// Setup handlers
 	http.HandleFunc("/", indexHandler)
@@ -73,6 +60,25 @@ func main() {
 	// Listen
 	log.Printf("Listening on port %d.", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+}
+
+func setupIndex(indexPath string) {
+	i, err := ml.GetIndex(indexPath)
+	if err == bleve.ErrorIndexPathDoesNotExist {
+		i, err = ml.CreateIndex(indexPath)
+		if err != nil {
+			log.Fatalf("Unable to create index: %s", err)
+		}
+		err := ml.Index(i, words)
+		if err != nil {
+			log.Fatalf("Unable to index words: %s", err)
+		}
+		index = i
+	} else if err != nil {
+		log.Fatalf("Unable to get index: %s", err)
+	} else {
+		index = i
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +91,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
+	if index == nil {
+		http.Error(w, "Index not yet indexed.", http.StatusInternalServerError)
+		return
+	}
+
 	q := r.URL.Query().Get("query")
 
 	if word, ok := words[q]; ok {
