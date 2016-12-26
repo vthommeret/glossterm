@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/blevesearch/bleve"
-	_ "github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 	"github.com/vthommeret/memory.limited/lib/ml"
 )
 

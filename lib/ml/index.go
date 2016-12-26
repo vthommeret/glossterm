@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve"
-	"github.com/blevesearch/bleve/analysis/analyzer/simple"
-
-	_ "github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
+	"github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 )
 
 const batchSize = 1000
@@ -24,11 +22,11 @@ func CreateIndex(indexPath string) (bleve.Index, error) {
 	wordMapping := bleve.NewDocumentMapping()
 
 	nameFieldMapping := bleve.NewTextFieldMapping()
-	nameFieldMapping.Analyzer = simple.Name
+	nameFieldMapping.Analyzer = simple_analyzer.Name
 	wordMapping.AddFieldMappingsAt("name", nameFieldMapping)
 
 	normalFieldMapping := bleve.NewTextFieldMapping()
-	normalFieldMapping.Analyzer = simple.Name
+	normalFieldMapping.Analyzer = simple_analyzer.Name
 	wordMapping.AddFieldMappingsAt("normal", nameFieldMapping)
 
 	indexMapping.AddDocumentMapping("word", wordMapping)

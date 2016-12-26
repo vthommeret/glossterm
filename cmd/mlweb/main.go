@@ -11,7 +11,6 @@ import (
 	"strconv"
 
 	"github.com/blevesearch/bleve"
-	_ "github.com/blevesearch/bleve/analysis/analyzers/simple_analyzer"
 	"github.com/vthommeret/memory.limited/lib/ml"
 	"github.com/vthommeret/memory.limited/lib/tpl"
 )
