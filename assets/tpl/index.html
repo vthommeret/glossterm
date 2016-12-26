@@ -75,8 +75,8 @@ var lastQuery = '';
 var lastXhr;
 
 var resultsTpl = _.template(
-  '<% _.each(hits, function(hit) { %>' +
-    '<li><a href="/words/<%- hit.id %>" data-word="<%- hit.id %>"><% if (hit.fragments.Name) { %><%= hit.fragments.Name %><% } else { %><mark><%- hit.id %></mark><% } %></a></li>' +
+  '<% _.each(results, function(result) { %>' +
+    '<li><a href="/words/<%- result %>" data-word="<%- result %>"><mark><%- result %></mark></a></li>' +
   '<% }); %>'
 );
 
@@ -122,7 +122,7 @@ function search(query) {
     success: function(data) {
       switch (data.type) {
         case 'results':
-          results.html(resultsTpl(data.results));
+          results.html(resultsTpl(data));
           definition.empty();
           break;
         case 'descendants':

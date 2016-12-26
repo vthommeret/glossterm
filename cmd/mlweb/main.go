@@ -10,25 +10,27 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/blevesearch/bleve"
 	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/memory.limited/lib/radix"
 	"github.com/vthommeret/memory.limited/lib/tpl"
 )
 
 const defaultWordsPath = "data/words.gob"
-const defaultIndexPath = "data/words.bleve"
+const defaultIndexPath = "data/index.gob"
 const defaultPort = 8080
+
+const max = 10
 
 var wordsPath string
 var indexPath string
 var port int
 
 var words map[string]*ml.Word
-var index bleve.Index
+var index *radix.Tree
 
 func init() {
 	flag.StringVar(&wordsPath, "w", defaultWordsPath, "Words path (gob format)")
-	flag.StringVar(&indexPath, "i", defaultIndexPath, "Index path (bleve format)")
+	flag.StringVar(&indexPath, "i", defaultIndexPath, "Index path (gob format)")
 
 	flag.IntVar(&port, "p", defaultPort, "Port (default 8080)")
 	flag.Parse()
@@ -51,7 +53,11 @@ func main() {
 	words = ws
 
 	// Get index
-	go setupIndex(indexPath)
+	t, err := ml.GetIndex(indexPath)
+	if err != nil {
+		log.Fatalf("Unable to get radix tree: %s", err)
+	}
+	index = t
 
 	// Setup handlers
 	http.HandleFunc("/", indexHandler)
@@ -60,25 +66,6 @@ func main() {
 	// Listen
 	log.Printf("Listening on port %d.", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
-}
-
-func setupIndex(indexPath string) {
-	i, err := ml.GetIndex(indexPath)
-	if err == bleve.ErrorIndexPathDoesNotExist {
-		i, err = ml.CreateIndex(indexPath)
-		if err != nil {
-			log.Fatalf("Unable to create index: %s", err)
-		}
-		err := ml.Index(i, words)
-		if err != nil {
-			log.Fatalf("Unable to index words: %s", err)
-		}
-		index = i
-	} else if err != nil {
-		log.Fatalf("Unable to get index: %s", err)
-	} else {
-		index = i
-	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -116,21 +103,15 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	query := bleve.NewPrefixQuery(q)
-
-	search := bleve.NewSearchRequest(query)
-	search.Highlight = bleve.NewHighlight()
-
-	searchResults, err := index.Search(search)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	rs := index.FindWordsWithPrefix(q, max)
+	if len(rs) > max {
+		rs = rs[:max]
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	b, err := json.Marshal(map[string]interface{}{
 		"type":    "results",
-		"results": searchResults,
+		"results": rs,
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
