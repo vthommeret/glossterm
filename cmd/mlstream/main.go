@@ -97,7 +97,7 @@ Loop:
 	// Gob writer
 	out, err := os.Create(outputFile)
 	if err != nil {
-		log.Fatalf("Unable to create %q file: %s", outputFile, out)
+		log.Fatalf("Unable to create %q file: %s", outputFile, err)
 	}
 	defer out.Close()
 
