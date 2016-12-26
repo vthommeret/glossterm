@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const total = 5500000 // approximate
@@ -39,13 +39,13 @@ func main() {
 	}
 
 	nBuckets := runtime.NumCPU()
-	buckets := make([][]ml.Page, nBuckets)
+	buckets := make([][]gt.Page, nBuckets)
 
-	pagesCh := make(chan ml.Page, 10)
-	errorsCh := make(chan ml.Error, 10)
+	pagesCh := make(chan gt.Page, 10)
+	errorsCh := make(chan gt.Error, 10)
 	doneCh := make(chan io.ReadCloser)
 
-	go ml.ParseXMLPages(in, pagesCh, errorsCh, doneCh)
+	go gt.ParseXMLPages(in, pagesCh, errorsCh, doneCh)
 
 	i := 0
 	count := 0

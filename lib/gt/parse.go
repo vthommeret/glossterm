@@ -1,10 +1,10 @@
-package ml
+package gt
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/vthommeret/memory.limited/lib/tpl"
+	"github.com/vthommeret/glossterm/lib/tpl"
 )
 
 type Word struct {

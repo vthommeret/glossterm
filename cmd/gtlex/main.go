@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 func main() {
@@ -32,12 +32,12 @@ func main() {
 
 	d := xml.NewDecoder(f)
 
-	var p ml.Page
+	var p gt.Page
 	err = d.Decode(&p)
 	if err != nil {
 		log.Fatalf("Unable to decode XML: %s", err)
 	}
 
-	l := ml.NewLexer(p.Text)
+	l := gt.NewLexer(p.Text)
 	l.Print()
 }

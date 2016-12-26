@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultIndexPath = "data/index.gob"
@@ -25,7 +25,7 @@ func main() {
 	}
 	q := args[0]
 
-	t, err := ml.GetIndex(indexPath)
+	t, err := gt.GetIndex(indexPath)
 	if err != nil {
 		log.Fatalf("Unable to get radix tree: %s", err)
 	}

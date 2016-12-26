@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/blevesearch/segment"
-	"github.com/vthommeret/memory.limited/lib/ml"
-	"github.com/vthommeret/memory.limited/lib/radix"
+	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/vthommeret/glossterm/lib/radix"
 )
 
 const defaultInput = "data/words.gob"
@@ -34,7 +34,7 @@ func main() {
 	outputCompressed := fmt.Sprintf("%s.gob.gz", outputBase)
 
 	// Get words.
-	words, err := ml.GetWords(input)
+	words, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
@@ -92,7 +92,7 @@ func getTerms(w string) (terms map[string]bool, err error) {
 		if segmenter.Type() != segment.None {
 			t := strings.ToLower(string(segmenter.Bytes()))
 			terms[t] = true
-			terms[ml.Normalize(t)] = true
+			terms[gt.Normalize(t)] = true
 		}
 	}
 	if err := segmenter.Err(); err != nil {

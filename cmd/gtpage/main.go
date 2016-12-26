@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultInput = "cmd/mlsplit/pages.xml"
@@ -27,7 +27,7 @@ func main() {
 	}
 	t := args[0]
 
-	files, err := ml.GetSplitFiles(inputFile)
+	files, err := gt.GetSplitFiles(inputFile)
 	if err != nil {
 		log.Fatalf("Unable to get split files: %s", err)
 	}
@@ -37,17 +37,17 @@ func main() {
 		log.Fatalf("No split files found for %q.", inputFile)
 	}
 
-	pageCh := make(chan ml.Page)
-	errorsCh := make(chan ml.Error)
+	pageCh := make(chan gt.Page)
+	errorsCh := make(chan gt.Error)
 	doneCh := make(chan io.ReadCloser)
 
 	completed := 0
 
 	for _, f := range files {
-		go ml.ParseXMLPage(f, t, pageCh, errorsCh, doneCh)
+		go gt.ParseXMLPage(f, t, pageCh, errorsCh, doneCh)
 	}
 
-	var page *ml.Page
+	var page *gt.Page
 
 Loop:
 	for {

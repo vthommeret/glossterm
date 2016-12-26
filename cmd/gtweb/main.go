@@ -10,9 +10,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
-	"github.com/vthommeret/memory.limited/lib/radix"
-	"github.com/vthommeret/memory.limited/lib/tpl"
+	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/vthommeret/glossterm/lib/radix"
+	"github.com/vthommeret/glossterm/lib/tpl"
 )
 
 const defaultWordsPath = "data/words.gob"
@@ -25,7 +25,7 @@ var wordsPath string
 var indexPath string
 var port int
 
-var words map[string]*ml.Word
+var words map[string]*gt.Word
 var index *radix.Tree
 
 func init() {
@@ -46,14 +46,14 @@ func main() {
 	}
 
 	// Get words
-	ws, err := ml.GetWords(wordsPath)
+	ws, err := gt.GetWords(wordsPath)
 	if err != nil {
 		log.Fatalf("Unable to get words: %s", err)
 	}
 	words = ws
 
 	// Get index
-	t, err := ml.GetIndex(indexPath)
+	t, err := gt.GetIndex(indexPath)
 	if err != nil {
 		log.Fatalf("Unable to get radix tree: %s", err)
 	}
@@ -126,7 +126,7 @@ type From struct {
 }
 
 // Latin descendants of Spanish words.
-func latinDescendants(w *ml.Word) (from *From, descendants []tpl.Link) {
+func latinDescendants(w *gt.Word) (from *From, descendants []tpl.Link) {
 	var mention *tpl.Mention
 	var derived *tpl.Derived
 

@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 func main() {
@@ -34,13 +34,13 @@ func main() {
 
 	d := xml.NewDecoder(f)
 
-	var p ml.Page
+	var p gt.Page
 	err = d.Decode(&p)
 	if err != nil {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := ml.Parse(p, ml.DefaultLangMap)
+	w, err := gt.Parse(p, gt.DefaultLangMap)
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}

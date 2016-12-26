@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultInputFile = "cmd/mlsplit/pages.xml"
@@ -34,7 +34,7 @@ func main() {
 	outputBase := strings.TrimSuffix(outputFile, outputExt)
 	outputCompressedFile := fmt.Sprintf("%s.gob.gz", outputBase)
 
-	files, err := ml.GetSplitFiles(inputFile)
+	files, err := gt.GetSplitFiles(inputFile)
 	if err != nil {
 		log.Fatalf("Unable to get split files: %s", err)
 	}
@@ -51,18 +51,18 @@ func main() {
 	}
 	errFile := (stat.Mode() & os.ModeCharDevice) == 0
 
-	wordsCh := make(chan ml.Word, 10)
-	errorsCh := make(chan ml.Error, 10)
+	wordsCh := make(chan gt.Word, 10)
+	errorsCh := make(chan gt.Error, 10)
 	doneCh := make(chan io.ReadCloser)
 
 	count := 0
 	completed := 0
 
 	for _, f := range files {
-		go ml.ParseXMLWords(f, wordsCh, errorsCh, doneCh)
+		go gt.ParseXMLWords(f, wordsCh, errorsCh, doneCh)
 	}
 
-	words := make(map[string]*ml.Word)
+	words := make(map[string]*gt.Word)
 
 Loop:
 	for {

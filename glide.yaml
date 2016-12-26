@@ -1,3 +1,3 @@
-package: github.com/vthommeret/memory.limited
+package: github.com/vthommeret/glossterm
 import:
 - package: github.com/blevesearch/segment

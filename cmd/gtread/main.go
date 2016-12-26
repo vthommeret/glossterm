@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vthommeret/memory.limited/lib/ml"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultInput = "data/words.gob"
@@ -19,7 +19,7 @@ func init() {
 }
 
 func main() {
-	words, err := ml.GetWords(input)
+	words, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatal("Unable to get %q words: %s", input, err)
 	}

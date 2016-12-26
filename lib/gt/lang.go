@@ -1,4 +1,4 @@
-package ml
+package gt
 
 var DefaultLangs = []string{"en", "es", "fr", "la", "LL"}
 var DefaultLangMap map[string]bool

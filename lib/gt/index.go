@@ -1,4 +1,4 @@
-package ml
+package gt
 
 import (
 	"compress/gzip"
@@ -9,10 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/vthommeret/glossterm/lib/radix"
 )
 
-// GetWords returns words either from path or compressed path.
-func GetWords(path string) (map[string]*Word, error) {
+// GetIndex returns radix tree either from path or compressed path.
+func GetIndex(path string) (*radix.Tree, error) {
 	var f io.ReadCloser
 	if exists(path) {
 		wf, err := os.Open(path)
@@ -35,16 +37,11 @@ func GetWords(path string) (map[string]*Word, error) {
 		}
 		f = gr
 	}
-	var words map[string]*Word
-	err := gob.NewDecoder(f).Decode(&words)
+	var t *radix.Tree
+	err := gob.NewDecoder(f).Decode(&t)
 	f.Close()
 	if err != nil {
 		return nil, err
 	}
-	return words, nil
-}
-
-func exists(file string) bool {
-	_, err := os.Stat(file)
-	return !os.IsNotExist(err)
+	return t, nil
 }
