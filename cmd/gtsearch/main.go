@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/vthommeret/glossterm/lib/gt"
 )
@@ -30,7 +31,7 @@ func main() {
 		log.Fatalf("Unable to get radix tree: %s", err)
 	}
 
-	rs := t.FindWordsWithPrefix(q, max)
+	rs := t.FindWordsWithPrefix(strings.ToLower(q), max)
 	if len(rs) > max {
 		rs = rs[:max]
 	}

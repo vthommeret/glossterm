@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/vthommeret/glossterm/lib/gt"
 	"github.com/vthommeret/glossterm/lib/radix"
@@ -103,7 +104,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rs := index.FindWordsWithPrefix(q, max)
+	rs := index.FindWordsWithPrefix(strings.ToLower(q), max)
 	if len(rs) > max {
 		rs = rs[:max]
 	}
