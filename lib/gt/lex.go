@@ -293,7 +293,6 @@ func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
 	return func(l *lexer) stateFn {
 		l.pos += Pos(len(delim))
 		l.emitHeader(it, depth)
-		l.ignore()
 		return lexText
 	}
 }
@@ -302,7 +301,6 @@ func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
 func lexLeftTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(leftTemplate))
 	l.emit(itemLeftTemplate)
-	l.ignore()
 	return lexAction
 }
 
