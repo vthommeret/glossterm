@@ -19,10 +19,11 @@ type Pos int
 
 // item represents a token or text string returned from the scanner.
 type item struct {
-	typ   itemType // The type of this item.
-	pos   Pos      // The starting position, in bytes, of this item in the input string.
-	val   string   // The value of this item.
-	depth int      // Used by itemHeaderStart and itemHeaderEnd to indicate header depth.
+	typ      itemType // The type of this item.
+	pos      Pos      // The starting position, in bytes, of this item in the input string.
+	val      string   // The value of this item.
+	depth    int      // Used by itemHeaderStart and itemHeaderEnd to indicate header depth.
+	balanced bool     // Used for itemLeftTemplate to indicate whether it has a matching itemRightTemplate.
 }
 
 func (i item) String() string {
@@ -91,6 +92,14 @@ var voidTags = []string{
 }
 var voidTagMap = map[string]bool{}
 
+type buffer struct {
+	items    []item  // items buffered
+	tpls     []*item // pointers to template opens
+	lastOpen int     // index of last template open
+}
+
+var tplBuffer buffer
+
 func (i itemType) String() string {
 	s := itemName[i]
 	if s == "" {
@@ -140,13 +149,35 @@ func (l *lexer) backup() {
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
-	l.items <- item{t, l.start, l.input[l.start:l.pos], 0}
+	l.items <- item{t, l.start, l.input[l.start:l.pos], 0, false}
 	l.start = l.pos
+}
+
+// buffer an item for emit, in case we need to backtrack.
+func (l *lexer) buffer(t itemType) {
+	i := item{t, l.start, l.input[l.start:l.pos], 0, false}
+
+	fmt.Printf("%s (%q): ", i.typ, i.val)
+
+	tplBuffer.items = append(tplBuffer.items, i)
+	if t == itemLeftTemplate {
+		tplBuffer.tpls = append(tplBuffer.tpls, &i)
+		tplBuffer.lastOpen++
+	} else if t == itemRightTemplate {
+		tplBuffer.tpls[tplBuffer.lastOpen-1].balanced = true
+		tplBuffer.lastOpen--
+	}
+	l.start = l.pos
+
+	for _, tpl := range tplBuffer.tpls {
+		fmt.Printf("%t", tpl.balanced)
+	}
+	fmt.Println()
 }
 
 // emitHeader passes a header item back to the client.
 func (l *lexer) emitHeader(t itemType, depth int) {
-	l.items <- item{t, l.start, l.input[l.start:l.pos], depth}
+	l.items <- item{t, l.start, l.input[l.start:l.pos], depth, false}
 	l.start = l.pos
 }
 
@@ -174,7 +205,7 @@ func (l *lexer) acceptRun(valid string) {
 // errorf returns an error token and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.nextItem.
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
-	l.items <- item{itemError, l.start, fmt.Sprintf(format, args...), 0}
+	l.items <- item{itemError, l.start, fmt.Sprintf(format, args...), 0, false}
 	return nil
 }
 
@@ -226,6 +257,23 @@ func (l *lexer) run() {
 	close(l.items)
 }
 
+// drainBuffer drains the tpl buffer
+func (l *lexer) drainBuffer() {
+	for _, i := range tplBuffer.items {
+		l.items <- i
+	}
+	tplBuffer = buffer{}
+}
+
+// drainBufferAsText drains the tpl buffer as text
+func (l *lexer) drainBufferAsText() {
+	for _, i := range tplBuffer.items {
+		i.typ = itemText
+		l.items <- i
+	}
+	tplBuffer = buffer{}
+}
+
 // state functions
 
 const (
@@ -235,6 +283,7 @@ const (
 	rightTemplate = "}}"
 	paramEqual    = "="
 	paramDelim    = "|"
+	spaceChars    = " \t\r\n"
 )
 
 // lexText scans until a header or template delimiter.
@@ -300,14 +349,15 @@ func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
 // lexLeftTemplate scans the left template delimiter.
 func lexLeftTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(leftTemplate))
-	l.emit(itemLeftTemplate)
+	l.buffer(itemLeftTemplate)
 	return lexAction
 }
 
 // lexRightTemplate scans the right template delimiter.
 func lexRightTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(rightTemplate))
-	l.emit(itemRightTemplate)
+	l.buffer(itemRightTemplate)
+	l.drainBuffer()
 	return lexText
 }
 
@@ -320,27 +370,41 @@ Loop:
 	for {
 		switch r := l.next(); {
 		case r == eof:
-			return l.errorf("unclosed action (lexAction)")
+			// Unclosed template -- eof.
+			l.drainBufferAsText()
+			return lexText
 		case isEndOfLine(r):
-			l.backup()
-			if l.pos > l.start {
-				l.emit(itemAction)
+			if strings.HasPrefix(l.input[l.pos:], headerDelim) {
+				// Unclosed template -- header start.
+				l.backup()
+				if l.pos > l.start {
+					l.buffer(itemAction)
+				}
+				l.drainBufferAsText()
+				return lexText
+			} else {
+				_ = "breakpoint"
+				l.backup()
+				if l.pos > l.start {
+					l.buffer(itemAction)
+				}
+				l.ignore()
+				return lexParam
 			}
-			l.pos += Pos(1)
-			l.ignore()
 		case r == '}':
 			if n := l.peek(); n == '}' {
 				l.backup()
 				if l.pos > l.start {
-					l.emit(itemAction)
+					l.buffer(itemAction)
 				}
 				break Loop
 			}
 		case r == '|':
 			l.backup()
 			if l.pos > l.start {
-				l.emit(itemAction)
+				l.buffer(itemAction)
 			}
+			_ = "breakpoint"
 			return lexParam
 		default:
 			// absorb.
@@ -351,9 +415,7 @@ Loop:
 
 // lexParam scans a template parameter.
 func lexParam(l *lexer) stateFn {
-	l.pos += Pos(len(paramDelim))
-	l.ignore()
-
+	var inParam bool
 	var inNamedParam bool
 	var emittedEndOfLineParam bool
 
@@ -370,21 +432,41 @@ Loop:
 	for {
 		switch r := l.next(); {
 		case r == eof:
-			return l.errorf("unclosed action (lexParam)")
+			_ = "breakpoint"
+			// Unclosed template -- eof.
+			l.backup()
+			if l.pos > l.start {
+				l.bufferParam(inNamedParam)
+			}
+			l.drainBufferAsText()
+			return lexText
 		case isEndOfLine(r):
+			_ = "breakpoint"
 			if emittedEndOfLineParam {
 				emittedEndOfLineParam = false
-			} else if n := l.peek(); n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
-				l.backup()
-				if l.pos > l.start {
-					l.emitParam(inNamedParam)
-					emittedEndOfLineParam = true
+			} else {
+				n := l.peek()
+				if n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+					l.backup()
+					if l.pos > l.start {
+						l.bufferParam(inNamedParam)
+						emittedEndOfLineParam = true
+					}
+					l.pos += Pos(1)
+					l.ignore()
+					inNamedParam = false
+				} else if n == '=' {
+					// Unclosed template -- header start.
+					l.backup()
+					if l.pos > l.start {
+						l.bufferParam(inNamedParam)
+					}
+					l.drainBufferAsText()
+					return lexText
 				}
-				l.pos += Pos(1)
-				l.ignore()
-				inNamedParam = false
 			}
 		case r == '<':
+			_ = "breakpoint"
 			if openStartTag {
 				openStartTag = false
 			} else if inTag {
@@ -395,6 +477,7 @@ Loop:
 				openStartTagPos = l.pos
 			}
 		case r == '>':
+			_ = "breakpoint"
 			if openStartTag {
 				tag := l.input[openStartTagPos : l.pos-1]
 				if _, ok := voidTagMap[tag]; !ok {
@@ -407,6 +490,7 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '[':
+			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == '[' {
 					inLink = true
@@ -419,6 +503,7 @@ Loop:
 				openCloseTag = false
 			}
 		case r == ']':
+			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == ']' {
 					inLink = false
@@ -431,9 +516,10 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '=':
+			_ = "breakpoint"
 			if !inTag && !inNamedParam {
 				l.backup()
-				l.emit(itemParamName)
+				l.buffer(itemParamName)
 				l.pos += Pos(len(paramEqual))
 				l.ignore()
 				inNamedParam = true
@@ -445,15 +531,19 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '|':
+			_ = "breakpoint"
 			if !inTag && !inLink && !nestedTpl {
-				l.backup()
-				if emittedEndOfLineParam {
-					emittedEndOfLineParam = false
-				} else {
-					l.emitParam(inNamedParam)
+				if inParam {
+					l.backup()
+					if emittedEndOfLineParam {
+						emittedEndOfLineParam = false
+					} else if l.pos > l.start {
+						l.bufferParam(inNamedParam)
+					}
+					l.pos += Pos(len(paramDelim))
 				}
-				l.pos += Pos(len(paramDelim))
 				l.ignore()
+				inParam = true
 				inNamedParam = false
 			}
 			if openStartTag {
@@ -463,6 +553,7 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '{':
+			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == '{' {
 					nestedTpl = true
@@ -475,13 +566,14 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '}':
+			_ = "breakpoint"
 			if n := l.peek(); n == '}' {
 				if nestedTpl {
 					nestedTpl = false
 				} else {
 					l.backup()
 					if !emittedEndOfLineParam {
-						l.emitParam(inNamedParam)
+						l.bufferParam(inNamedParam)
 					}
 					break Loop
 				}
@@ -493,6 +585,7 @@ Loop:
 				openCloseTag = false
 			}
 		default:
+			_ = "breakpoint"
 			if !isAlphaNumeric(r) {
 				if openStartTag {
 					openStartTag = false
@@ -501,17 +594,24 @@ Loop:
 					openCloseTag = false
 				}
 			}
+			if !inParam && !isWhitespace(r) {
+				// Unclosed template (invalid character)
+				l.backup()
+				l.ignore() // Ignore previous whitespace.
+				l.drainBufferAsText()
+				return lexText
+			}
 			// absorb.
 		}
 	}
 	return lexAction
 }
 
-func (l *lexer) emitParam(inNamedParam bool) {
+func (l *lexer) bufferParam(inNamedParam bool) {
 	if inNamedParam {
-		l.emit(itemParamValue)
+		l.buffer(itemParamValue)
 	} else {
-		l.emit(itemParam)
+		l.buffer(itemParam)
 	}
 }
 
@@ -523,6 +623,11 @@ func isEndOfLine(r rune) bool {
 // isAlphaNumeric reports whether r is an ASCII letter or digit.
 func isAlphaNumeric(r rune) bool {
 	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+}
+
+// isWhitespace reports whether r is a whitespace character.
+func isWhitespace(r rune) bool {
+	return (r == ' ' || r == '\t' || r == '\r' || r == '\n')
 }
 
 func init() {
