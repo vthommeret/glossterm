@@ -45,9 +45,9 @@ const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF
 	itemAction        // Template action
-	itemParam         // Template parameter
+	itemParamDelim    // Template parameter delimiter
 	itemParamName     // Template parameter name
-	itemParamValue    // Template parameter value
+	itemParamText     // Template parameter text
 	itemPipe          // Pipe symbol
 	itemHeaderStart   // Header start
 	itemHeaderEnd     // Header end
@@ -61,9 +61,9 @@ var itemName = map[itemType]string{
 	itemError:         "error",
 	itemEOF:           "EOF",
 	itemAction:        "action",
-	itemParam:         "param",
+	itemParamDelim:    "param delim",
 	itemParamName:     "param name",
-	itemParamValue:    "param value",
+	itemParamText:     "param text",
 	itemPipe:          "pipe",
 	itemHeaderStart:   "header start",
 	itemHeaderEnd:     "header end",
@@ -426,8 +426,6 @@ func lexParam(l *lexer) stateFn {
 
 	var inLink bool
 
-	var nestedTpl bool
-
 Loop:
 	for {
 		switch r := l.next(); {
@@ -436,7 +434,7 @@ Loop:
 			// Unclosed template -- eof.
 			l.backup()
 			if l.pos > l.start {
-				l.bufferParam(inNamedParam)
+				l.buffer(itemParamText)
 			}
 			l.drainBufferAsText()
 			return lexText
@@ -449,7 +447,7 @@ Loop:
 				if n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
 					l.backup()
 					if l.pos > l.start {
-						l.bufferParam(inNamedParam)
+						l.buffer(itemParamText)
 						emittedEndOfLineParam = true
 					}
 					l.pos += Pos(1)
@@ -459,7 +457,7 @@ Loop:
 					// Unclosed template -- header start.
 					l.backup()
 					if l.pos > l.start {
-						l.bufferParam(inNamedParam)
+						l.buffer(itemParamText)
 					}
 					l.drainBufferAsText()
 					return lexText
@@ -532,17 +530,17 @@ Loop:
 			}
 		case r == '|':
 			_ = "breakpoint"
-			if !inTag && !inLink && !nestedTpl {
+			if !inTag && !inLink {
 				if inParam {
 					l.backup()
 					if emittedEndOfLineParam {
 						emittedEndOfLineParam = false
 					} else if l.pos > l.start {
-						l.bufferParam(inNamedParam)
+						l.buffer(itemParamText)
 					}
 					l.pos += Pos(len(paramDelim))
 				}
-				l.ignore()
+				l.buffer(itemParamDelim)
 				inParam = true
 				inNamedParam = false
 			}
@@ -556,7 +554,11 @@ Loop:
 			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == '{' {
-					nestedTpl = true
+					l.backup()
+					if l.pos > l.start {
+						l.buffer(itemParamText)
+					}
+					return lexLeftTemplate
 				}
 			}
 			if openStartTag {
@@ -568,15 +570,11 @@ Loop:
 		case r == '}':
 			_ = "breakpoint"
 			if n := l.peek(); n == '}' {
-				if nestedTpl {
-					nestedTpl = false
-				} else {
-					l.backup()
-					if !emittedEndOfLineParam {
-						l.bufferParam(inNamedParam)
-					}
-					break Loop
+				l.backup()
+				if !emittedEndOfLineParam {
+					l.buffer(itemParamText)
 				}
+				break Loop
 			}
 			if openStartTag {
 				openStartTag = false
@@ -605,14 +603,6 @@ Loop:
 		}
 	}
 	return lexAction
-}
-
-func (l *lexer) bufferParam(inNamedParam bool) {
-	if inNamedParam {
-		l.buffer(itemParamValue)
-	} else {
-		l.buffer(itemParam)
-	}
 }
 
 // isEndOfLine reports whether r is an end-of-line character.

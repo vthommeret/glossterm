@@ -74,7 +74,7 @@ func Parse(p Page, langMap map[string]bool) (Word, error) {
 
 	var language *Language
 	var template *tpl.Template
-	var param *tpl.Parameter
+	//var param *tpl.Parameter
 
 	l := NewLexer(p.Text)
 
@@ -201,13 +201,15 @@ Parse:
 			}
 		case itemAction:
 			template.Action = i.val
-		case itemParam:
-			template.Parameters = append(template.Parameters, i.val)
+		//case itemParam:
+		// TODO: Migrate to using itemParamDelim and itemText.
+		//template.Parameters = append(template.Parameters, i.val)
 		case itemParamName:
-			param = &tpl.Parameter{Name: i.val}
-		case itemParamValue:
-			param.Value = i.val
-			template.NamedParameters = append(template.NamedParameters, *param)
+			//param = &tpl.Parameter{Name: i.val}
+			//case itemParamValue:
+			// TODO: Migrate to using itemParamDelim and itemText.
+			//param.Value = i.val
+			//template.NamedParameters = append(template.NamedParameters, *param)
 		}
 	}
 
