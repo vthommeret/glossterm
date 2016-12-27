@@ -25,7 +25,7 @@ type Error struct {
 
 const count = 1
 
-// ParseXMLPage returns page for cmd/mlpage.
+// ParseXMLPage returns page for cmd/gtpage.
 func ParseXMLPage(r io.ReadCloser, title string, page chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 Parse:
@@ -52,7 +52,7 @@ Parse:
 	done <- r
 }
 
-// ParseXMLPages returns pages for cmd/mlsplit.
+// ParseXMLPages returns pages for cmd/gtsplit.
 func ParseXMLPages(r io.ReadCloser, pages chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 
@@ -82,7 +82,7 @@ Parse:
 	done <- r
 }
 
-// ParseXMLWords returns words for cmd/mlstream.
+// ParseXMLWords returns words for cmd/gtstream.
 func ParseXMLWords(r io.ReadCloser, words chan<- Word, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 

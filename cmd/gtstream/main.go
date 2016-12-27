@@ -14,7 +14,7 @@ import (
 	"github.com/vthommeret/glossterm/lib/gt"
 )
 
-const defaultInputFile = "cmd/mlsplit/pages.xml"
+const defaultInputFile = "cmd/gtsplit/pages.xml"
 const defaultOutputFile = "data/words.gob"
 
 const total = 200000 // approximate

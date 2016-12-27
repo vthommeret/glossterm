@@ -11,7 +11,7 @@ import (
 	"github.com/vthommeret/glossterm/lib/gt"
 )
 
-const defaultInput = "cmd/mlsplit/pages.xml"
+const defaultInput = "cmd/gtsplit/pages.xml"
 
 var inputFile string
 

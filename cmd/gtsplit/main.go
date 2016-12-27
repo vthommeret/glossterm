@@ -17,7 +17,7 @@ import (
 const total = 5500000 // approximate
 const step = total / 100
 
-const defaultOutputFile = "cmd/mlsplit/pages.xml"
+const defaultOutputFile = "cmd/gtsplit/pages.xml"
 
 var inputFile string
 var outputFile string
