@@ -81,42 +81,36 @@ func TestLex(t *testing.T) {
 		{"start{{t\nend", "Unclosed template action", []item{
 			it(itemText, "\n"),
 			it(itemText, "start"),
-			it(itemText, "{{"),
-			it(itemText, "t"),
-			it(itemText, "end"),
+			it(itemText, "{{t"),
+			it(itemText, "end\n"),
 		}},
 		{"start{{t\n==Header", "Unclosed template action (header)", []item{
 			it(itemText, "\n"),
 			it(itemText, "start"),
-			it(itemText, "{{"),
-			it(itemText, "t"),
+			it(itemText, "{{t"),
 			ih(itemHeaderStart, "\n==", 2),
 			it(itemText, "Header\n"),
 		}},
 		{"start{{t|1\nmiddle\nend", "Unclosed template param", []item{
 			it(itemText, "\n"),
 			it(itemText, "start"),
-			it(itemText, "{{"),
-			it(itemText, "t"),
-			it(itemParamText, "1\nmiddle\nend\n"),
+			it(itemText, "{{t|1\nmiddle\nend\n"),
 		}},
 		{"start{{t|1\n==Header", "Unclosed template param (header)", []item{
 			it(itemText, "\n"),
 			it(itemText, "start"),
-			it(itemText, "{{"),
-			it(itemText, "t"),
-			it(itemParamText, "1"),
+			it(itemText, "{{t|1"),
 			ih(itemHeaderStart, "\n==", 2),
 			it(itemText, "Header\n"),
 		}},
-		{"start{{t|1{{new}}", "Unclosed template param (template start)", []item{
+		{"start{{t|1\n{{new}}", "Unclosed template param (nested)", []item{
 			it(itemText, "\n"),
 			it(itemText, "start"),
-			it(itemText, "{{"),
-			it(itemText, "t"),
-			it(itemParamText, "1"),
-			ih(itemHeaderStart, "\n==", 2),
-			it(itemText, "Header\n"),
+			it(itemText, "{{t|1\n"),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "new"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, "\n"),
 		}},
 		{"{{t|multi\nline}}", "Multi-line template", []item{
 			it(itemText, "\n"),
@@ -129,24 +123,63 @@ func TestLex(t *testing.T) {
 		}},
 		{"{{t\n\t\t|1}}", "Multi-line template w/ leading whitespace", []item{
 			it(itemText, "\n"),
-			it(itemText, "start"),
-			it(itemText, "{{"),
+			it(itemLeftTemplate, "{{"),
 			it(itemAction, "t"),
+			it(itemParamDelim, "\n\t\t|"),
 			it(itemParamText, "1"),
-			ih(itemHeaderStart, "\n==", 2),
-			it(itemText, "Header\n"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, "\n"),
+		}},
+		{"{{gloss|outer{{gloss|inner{{gloss|inner-inner}} and some more {{gloss|ok}} and even more {{gloss|ok}}", "Crazy nesting 1", []item{
+			it(itemText, "\n"),
+			it(itemText, "{{gloss|outer{{gloss|inner"),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemParamText, "inner-inner"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, " and some more "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemParamText, "ok"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, " and even more "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemParamText, "ok"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, "\n"),
+		}},
+		{"{{gloss|outer{{gloss|inner{{gloss|inner-inner}} and some more {{gloss|ok and even more {{gloss|ok}}", "Crazy nesting 2", []item{
+			it(itemText, "\n"),
+			it(itemText, "{{gloss|outer{{gloss|inner"),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemParamText, "inner-inner"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, " and some more "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemParamText, "ok and even more "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemParamText, "ok"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, "\n"),
 		}},
 	}
 	for _, tt := range tests {
-		fmt.Printf("%s: %q\n\n", tt.desc, tt.input)
 		l := NewLexer(tt.input)
 		got := items(l)
 		itemsEqual(got, tt.want)
-		/*
-			if eq, reason := itemsEqual(got, tt.want); !eq {
-				t.Errorf("%s: %s. NewLexer(%q) = %+v, want %+v.", tt.desc, reason, tt.input, got, tt.want)
-			}
-		*/
+		if eq, reason := itemsEqual(got, tt.want); !eq {
+			t.Errorf("%s: %s. NewLexer(%q) = %+v, want %+v.", tt.desc, reason, tt.input, got, tt.want)
+		}
 	}
 }
 
@@ -167,16 +200,8 @@ func items(l *lexer) (is []item) {
 			}
 			break
 		}
-		/*
-			if i.typ == itemHeaderStart || i.typ == itemHeaderEnd {
-				fmt.Printf("%s, %d: %q\n", i.typ, i.depth, i.val)
-			} else {
-				fmt.Printf("%s: %q\n", i.typ, i.val)
-			}
-		*/
 		is = append(is, i)
 	}
-	fmt.Printf("------------\n")
 	return is
 }
 

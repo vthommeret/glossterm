@@ -93,9 +93,19 @@ var voidTags = []string{
 var voidTagMap = map[string]bool{}
 
 type buffer struct {
-	items    []item  // items buffered
-	tpls     []*item // pointers to template opens
-	lastOpen int     // index of last template open
+	buffering bool
+	items     []item  // items buffered
+	tpls      []*item // pointers to template opens; TODO: rename opens?
+	lastOpen  int     // index of last template open
+}
+
+func (b *buffer) balanced() bool {
+	for _, t := range b.tpls {
+		if !t.balanced {
+			return false
+		}
+	}
+	return true
 }
 
 var tplBuffer buffer
@@ -149,15 +159,17 @@ func (l *lexer) backup() {
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
-	l.items <- item{t, l.start, l.input[l.start:l.pos], 0, false}
-	l.start = l.pos
+	if tplBuffer.buffering {
+		l.buffer(t)
+	} else {
+		l.items <- item{t, l.start, l.input[l.start:l.pos], 0, false}
+		l.start = l.pos
+	}
 }
 
 // buffer an item for emit, in case we need to backtrack.
 func (l *lexer) buffer(t itemType) {
 	i := item{t, l.start, l.input[l.start:l.pos], 0, false}
-
-	fmt.Printf("%s (%q): ", i.typ, i.val)
 
 	tplBuffer.items = append(tplBuffer.items, i)
 	if t == itemLeftTemplate {
@@ -168,11 +180,6 @@ func (l *lexer) buffer(t itemType) {
 		tplBuffer.lastOpen--
 	}
 	l.start = l.pos
-
-	for _, tpl := range tplBuffer.tpls {
-		fmt.Printf("%t", tpl.balanced)
-	}
-	fmt.Println()
 }
 
 // emitHeader passes a header item back to the client.
@@ -259,17 +266,30 @@ func (l *lexer) run() {
 
 // drainBuffer drains the tpl buffer
 func (l *lexer) drainBuffer() {
+	s := item{typ: itemText}
+	depth := -1
 	for _, i := range tplBuffer.items {
-		l.items <- i
+		if i.typ == itemLeftTemplate {
+			depth++
+		}
+		if tplBuffer.tpls[depth].balanced {
+			if s.val != "" {
+				l.items <- s
+				s = item{typ: itemText}
+			}
+			l.items <- i
+		} else {
+			if s.val == "" {
+				s.pos = i.pos
+			}
+			s.val += i.val
+		}
+		if i.typ == itemRightTemplate {
+			depth--
+		}
 	}
-	tplBuffer = buffer{}
-}
-
-// drainBufferAsText drains the tpl buffer as text
-func (l *lexer) drainBufferAsText() {
-	for _, i := range tplBuffer.items {
-		i.typ = itemText
-		l.items <- i
+	if s.val != "" {
+		l.items <- s
 	}
 	tplBuffer = buffer{}
 }
@@ -312,14 +332,15 @@ Loop:
 			}
 		}
 		if strings.HasPrefix(l.input[l.pos:], leftTemplate) {
+			_ = "breakpoint"
 			if l.pos > l.start {
 				l.emit(itemText)
 			}
-			l.ignore()
 			return lexLeftTemplate
 		}
 		switch r := l.next(); {
 		case r == eof:
+			l.drainBuffer()
 			break Loop
 		case isEndOfLine(r):
 			if l.pos > l.start {
@@ -348,16 +369,19 @@ func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
 
 // lexLeftTemplate scans the left template delimiter.
 func lexLeftTemplate(l *lexer) stateFn {
+	tplBuffer.buffering = true
 	l.pos += Pos(len(leftTemplate))
-	l.buffer(itemLeftTemplate)
+	l.emit(itemLeftTemplate)
 	return lexAction
 }
 
 // lexRightTemplate scans the right template delimiter.
 func lexRightTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(rightTemplate))
-	l.buffer(itemRightTemplate)
-	l.drainBuffer()
+	l.emit(itemRightTemplate)
+	if tplBuffer.balanced() {
+		l.drainBuffer()
+	}
 	return lexText
 }
 
@@ -371,22 +395,21 @@ Loop:
 		switch r := l.next(); {
 		case r == eof:
 			// Unclosed template -- eof.
-			l.drainBufferAsText()
+			l.drainBuffer()
 			return lexText
 		case isEndOfLine(r):
 			if strings.HasPrefix(l.input[l.pos:], headerDelim) {
 				// Unclosed template -- header start.
 				l.backup()
 				if l.pos > l.start {
-					l.buffer(itemAction)
+					l.emit(itemAction)
 				}
-				l.drainBufferAsText()
+				l.drainBuffer()
 				return lexText
 			} else {
-				_ = "breakpoint"
 				l.backup()
 				if l.pos > l.start {
-					l.buffer(itemAction)
+					l.emit(itemAction)
 				}
 				l.ignore()
 				return lexParam
@@ -395,16 +418,15 @@ Loop:
 			if n := l.peek(); n == '}' {
 				l.backup()
 				if l.pos > l.start {
-					l.buffer(itemAction)
+					l.emit(itemAction)
 				}
 				break Loop
 			}
 		case r == '|':
 			l.backup()
 			if l.pos > l.start {
-				l.buffer(itemAction)
+				l.emit(itemAction)
 			}
-			_ = "breakpoint"
 			return lexParam
 		default:
 			// absorb.
@@ -430,16 +452,14 @@ Loop:
 	for {
 		switch r := l.next(); {
 		case r == eof:
-			_ = "breakpoint"
 			// Unclosed template -- eof.
 			l.backup()
 			if l.pos > l.start {
-				l.buffer(itemParamText)
+				l.emit(itemParamText)
 			}
-			l.drainBufferAsText()
+			l.drainBuffer()
 			return lexText
 		case isEndOfLine(r):
-			_ = "breakpoint"
 			if emittedEndOfLineParam {
 				emittedEndOfLineParam = false
 			} else {
@@ -447,7 +467,7 @@ Loop:
 				if n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
 					l.backup()
 					if l.pos > l.start {
-						l.buffer(itemParamText)
+						l.emit(itemParamText)
 						emittedEndOfLineParam = true
 					}
 					l.pos += Pos(1)
@@ -457,14 +477,13 @@ Loop:
 					// Unclosed template -- header start.
 					l.backup()
 					if l.pos > l.start {
-						l.buffer(itemParamText)
+						l.emit(itemParamText)
 					}
-					l.drainBufferAsText()
+					l.drainBuffer()
 					return lexText
 				}
 			}
 		case r == '<':
-			_ = "breakpoint"
 			if openStartTag {
 				openStartTag = false
 			} else if inTag {
@@ -475,7 +494,6 @@ Loop:
 				openStartTagPos = l.pos
 			}
 		case r == '>':
-			_ = "breakpoint"
 			if openStartTag {
 				tag := l.input[openStartTagPos : l.pos-1]
 				if _, ok := voidTagMap[tag]; !ok {
@@ -488,7 +506,6 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '[':
-			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == '[' {
 					inLink = true
@@ -501,7 +518,6 @@ Loop:
 				openCloseTag = false
 			}
 		case r == ']':
-			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == ']' {
 					inLink = false
@@ -514,10 +530,9 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '=':
-			_ = "breakpoint"
 			if !inTag && !inNamedParam {
 				l.backup()
-				l.buffer(itemParamName)
+				l.emit(itemParamName)
 				l.pos += Pos(len(paramEqual))
 				l.ignore()
 				inNamedParam = true
@@ -529,18 +544,17 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '|':
-			_ = "breakpoint"
 			if !inTag && !inLink {
 				if inParam {
 					l.backup()
 					if emittedEndOfLineParam {
 						emittedEndOfLineParam = false
 					} else if l.pos > l.start {
-						l.buffer(itemParamText)
+						l.emit(itemParamText)
 					}
 					l.pos += Pos(len(paramDelim))
 				}
-				l.buffer(itemParamDelim)
+				l.emit(itemParamDelim)
 				inParam = true
 				inNamedParam = false
 			}
@@ -551,12 +565,11 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '{':
-			_ = "breakpoint"
 			if !inTag {
 				if n := l.peek(); n == '{' {
 					l.backup()
 					if l.pos > l.start {
-						l.buffer(itemParamText)
+						l.emit(itemParamText)
 					}
 					return lexLeftTemplate
 				}
@@ -568,11 +581,10 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '}':
-			_ = "breakpoint"
 			if n := l.peek(); n == '}' {
 				l.backup()
 				if !emittedEndOfLineParam {
-					l.buffer(itemParamText)
+					l.emit(itemParamText)
 				}
 				break Loop
 			}
@@ -583,7 +595,6 @@ Loop:
 				openCloseTag = false
 			}
 		default:
-			_ = "breakpoint"
 			if !isAlphaNumeric(r) {
 				if openStartTag {
 					openStartTag = false
@@ -596,7 +607,7 @@ Loop:
 				// Unclosed template (invalid character)
 				l.backup()
 				l.ignore() // Ignore previous whitespace.
-				l.drainBufferAsText()
+				l.drainBuffer()
 				return lexText
 			}
 			// absorb.
