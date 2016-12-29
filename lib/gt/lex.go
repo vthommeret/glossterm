@@ -94,9 +94,9 @@ var voidTagMap = map[string]bool{}
 
 type buffer struct {
 	buffering bool
-	items     []item  // items buffered
-	tpls      []*item // pointers to template opens; TODO: rename opens?
-	lastOpen  int     // index of last template open
+	items     []*item // items buffered
+	tpls      []*item // pointers to template opens
+	openTpls  stack   // stack of open template indices
 }
 
 func (b *buffer) balanced() bool {
@@ -170,14 +170,13 @@ func (l *lexer) emit(t itemType) {
 // buffer an item for emit, in case we need to backtrack.
 func (l *lexer) buffer(t itemType) {
 	i := item{t, l.start, l.input[l.start:l.pos], 0, false}
-
-	tplBuffer.items = append(tplBuffer.items, i)
+	tplBuffer.items = append(tplBuffer.items, &i)
 	if t == itemLeftTemplate {
 		tplBuffer.tpls = append(tplBuffer.tpls, &i)
-		tplBuffer.lastOpen++
+		tplBuffer.openTpls.push(len(tplBuffer.tpls) - 1)
 	} else if t == itemRightTemplate {
-		tplBuffer.tpls[tplBuffer.lastOpen-1].balanced = true
-		tplBuffer.lastOpen--
+		lastOpen := tplBuffer.openTpls.pop()
+		tplBuffer.tpls[lastOpen].balanced = true
 	}
 	l.start = l.pos
 }
@@ -267,17 +266,18 @@ func (l *lexer) run() {
 // drainBuffer drains the tpl buffer
 func (l *lexer) drainBuffer() {
 	s := item{typ: itemText}
-	depth := -1
-	for _, i := range tplBuffer.items {
+	openTpls := stack{}
+	for n, i := range tplBuffer.items {
 		if i.typ == itemLeftTemplate {
-			depth++
+			openTpls.push(n)
 		}
-		if tplBuffer.tpls[depth].balanced {
+		tpl := openTpls.peek()
+		if tpl != -1 && tplBuffer.items[tpl].balanced {
 			if s.val != "" {
 				l.items <- s
 				s = item{typ: itemText}
 			}
-			l.items <- i
+			l.items <- *i
 		} else {
 			if s.val == "" {
 				s.pos = i.pos
@@ -285,7 +285,7 @@ func (l *lexer) drainBuffer() {
 			s.val += i.val
 		}
 		if i.typ == itemRightTemplate {
-			depth--
+			openTpls.pop()
 		}
 	}
 	if s.val != "" {
@@ -332,7 +332,6 @@ Loop:
 			}
 		}
 		if strings.HasPrefix(l.input[l.pos:], leftTemplate) {
-			_ = "breakpoint"
 			if l.pos > l.start {
 				l.emit(itemText)
 			}
@@ -635,4 +634,23 @@ func init() {
 	for _, t := range voidTags {
 		voidTagMap[t] = true
 	}
+}
+
+// Simple stack implementation. Doesn't handle popping/peeking empty stacks
+// since it should only be called when the tpl buffer can be balanced.
+
+type stack []int
+
+func (s *stack) push(v int) {
+	*s = append(*s, v)
+}
+
+func (s *stack) pop() int {
+	res := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+	return res
+}
+
+func (s *stack) peek() int {
+	return (*s)[len(*s)-1]
 }
