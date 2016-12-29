@@ -99,15 +99,6 @@ type buffer struct {
 	openTpls  stack   // stack of open template indices
 }
 
-func (b *buffer) balanced() bool {
-	for _, t := range b.tpls {
-		if !t.balanced {
-			return false
-		}
-	}
-	return true
-}
-
 var tplBuffer buffer
 
 func (i itemType) String() string {
@@ -378,7 +369,7 @@ func lexLeftTemplate(l *lexer) stateFn {
 func lexRightTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(rightTemplate))
 	l.emit(itemRightTemplate)
-	if tplBuffer.balanced() {
+	if len(tplBuffer.openTpls) == 0 {
 		l.drainBuffer()
 	}
 	return lexText
