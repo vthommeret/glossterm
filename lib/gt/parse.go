@@ -78,13 +78,16 @@ func ParseWord(name, text string, langMap map[string]bool) (Word, error) {
 
 	var language *Language
 	var template *tpl.Template
-	//var param *tpl.Parameter
+	var namedParam *tpl.Parameter
+
+	var depth int
 
 	l := NewLexer(text)
 
 Parse:
 	for {
 		i := l.NextItem()
+
 		switch i.typ {
 		case itemError:
 			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
@@ -150,8 +153,18 @@ Parse:
 				}
 			}
 		case itemLeftTemplate:
-			template = &tpl.Template{}
+			depth++
+			if depth == 1 {
+				template = &tpl.Template{}
+			} else {
+				// Nested templates aren't supported for now.
+				template = nil
+			}
 		case itemRightTemplate:
+			depth--
+			if template == nil {
+				break
+			}
 			if section == etymologySection {
 				if language != nil {
 					switch template.Action {
@@ -204,16 +217,27 @@ Parse:
 				}
 			}
 		case itemAction:
+			if template == nil {
+				break
+			}
 			template.Action = i.val
-		//case itemParam:
-		// TODO: Migrate to using itemParamDelim and itemText.
-		//template.Parameters = append(template.Parameters, i.val)
+		case itemParamText:
+			if template == nil {
+				break
+			}
+			if namedParam != nil {
+				namedParam.Value = i.val
+				template.NamedParameters = append(template.NamedParameters,
+					*namedParam)
+				namedParam = nil
+			} else {
+				template.Parameters = append(template.Parameters, i.val)
+			}
 		case itemParamName:
-			//param = &tpl.Parameter{Name: i.val}
-			//case itemParamValue:
-			// TODO: Migrate to using itemParamDelim and itemText.
-			//param.Value = i.val
-			//template.NamedParameters = append(template.NamedParameters, *param)
+			if template == nil {
+				break
+			}
+			namedParam = &tpl.Parameter{Name: i.val}
 		}
 	}
 
