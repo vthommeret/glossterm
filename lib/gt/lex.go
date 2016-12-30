@@ -99,8 +99,6 @@ type buffer struct {
 	openTpls  stack   // stack of open template indices
 }
 
-var tplBuffer buffer
-
 func (i itemType) String() string {
 	s := itemName[i]
 	if s == "" {
@@ -116,12 +114,13 @@ type stateFn func(*lexer) stateFn
 
 // lexer holds the state of the scanner.
 type lexer struct {
-	input string    // the string being scanned
-	state stateFn   // the next lexing function to enter
-	pos   Pos       // current position in the input
-	start Pos       // start position of this item
-	width Pos       // width of last rune read from input
-	items chan item // channel of scanned items
+	input    string    // the string being scanned
+	state    stateFn   // the next lexing function to enter
+	pos      Pos       // current position in the input
+	start    Pos       // start position of this item
+	width    Pos       // width of last rune read from input
+	items    chan item // channel of scanned items
+	buffered buffer    // buffer of items before they're emitted
 }
 
 // next returns the next rune in the input.
@@ -150,7 +149,7 @@ func (l *lexer) backup() {
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
-	if tplBuffer.buffering {
+	if l.buffered.buffering {
 		l.buffer(t)
 	} else {
 		l.items <- item{t, l.start, l.input[l.start:l.pos], 0, false}
@@ -161,13 +160,13 @@ func (l *lexer) emit(t itemType) {
 // buffer an item for emit, in case we need to backtrack.
 func (l *lexer) buffer(t itemType) {
 	i := item{t, l.start, l.input[l.start:l.pos], 0, false}
-	tplBuffer.items = append(tplBuffer.items, &i)
+	l.buffered.items = append(l.buffered.items, &i)
 	if t == itemLeftTemplate {
-		tplBuffer.tpls = append(tplBuffer.tpls, &i)
-		tplBuffer.openTpls.push(len(tplBuffer.tpls) - 1)
+		l.buffered.tpls = append(l.buffered.tpls, &i)
+		l.buffered.openTpls.push(len(l.buffered.tpls) - 1)
 	} else if t == itemRightTemplate {
-		lastOpen := tplBuffer.openTpls.pop()
-		tplBuffer.tpls[lastOpen].balanced = true
+		lastOpen := l.buffered.openTpls.pop()
+		l.buffered.tpls[lastOpen].balanced = true
 	}
 	l.start = l.pos
 }
@@ -258,12 +257,12 @@ func (l *lexer) run() {
 func (l *lexer) drainBuffer() {
 	s := item{typ: itemText}
 	openTpls := stack{}
-	for n, i := range tplBuffer.items {
+	for n, i := range l.buffered.items {
 		if i.typ == itemLeftTemplate {
 			openTpls.push(n)
 		}
 		tpl := openTpls.peek()
-		if tpl != -1 && tplBuffer.items[tpl].balanced {
+		if tpl != -1 && l.buffered.items[tpl].balanced {
 			if s.val != "" {
 				l.items <- s
 				s = item{typ: itemText}
@@ -282,7 +281,7 @@ func (l *lexer) drainBuffer() {
 	if s.val != "" {
 		l.items <- s
 	}
-	tplBuffer = buffer{}
+	l.buffered = buffer{}
 }
 
 // state functions
@@ -364,7 +363,7 @@ func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
 
 // lexLeftTemplate scans the left template delimiter.
 func lexLeftTemplate(l *lexer) stateFn {
-	tplBuffer.buffering = true
+	l.buffered.buffering = true
 	l.pos += Pos(len(leftTemplate))
 	l.emit(itemLeftTemplate)
 	return lexAction
@@ -374,7 +373,7 @@ func lexLeftTemplate(l *lexer) stateFn {
 func lexRightTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(rightTemplate))
 	l.emit(itemRightTemplate)
-	if len(tplBuffer.openTpls) == 0 {
+	if len(l.buffered.openTpls) == 0 {
 		l.drainBuffer()
 	}
 	return lexText
@@ -627,7 +626,7 @@ func init() {
 }
 
 // Simple stack implementation. Doesn't handle popping/peeking empty stacks
-// since it should only be called when the tpl buffer can be balanced.
+// since it should only be called when the buffer can be balanced.
 
 type stack []int
 
