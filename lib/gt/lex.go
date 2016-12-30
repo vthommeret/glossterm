@@ -539,7 +539,7 @@ Loop:
 					l.backup()
 					if emittedEndOfLineParam {
 						emittedEndOfLineParam = false
-					} else if l.pos > l.start {
+					} else {
 						l.emit(itemParamText)
 					}
 					l.pos += Pos(len(paramDelim))
