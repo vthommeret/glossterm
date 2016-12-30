@@ -61,8 +61,12 @@ const (
 )
 
 func Parse(p Page, langMap map[string]bool) (Word, error) {
+	return ParseWord(p.Title, p.Text, langMap)
+}
+
+func ParseWord(name, text string, langMap map[string]bool) (Word, error) {
 	w := Word{
-		Name: p.Title,
+		Name: name,
 	}
 
 	var inLanguageHeader bool
@@ -76,7 +80,7 @@ func Parse(p Page, langMap map[string]bool) (Word, error) {
 	var template *tpl.Template
 	//var param *tpl.Parameter
 
-	l := NewLexer(p.Text)
+	l := NewLexer(text)
 
 Parse:
 	for {
