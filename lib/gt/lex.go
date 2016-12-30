@@ -9,7 +9,7 @@ import (
 // Adapted from https://github.com/golang/go/blob/master/src/text/template/parse/lex.go
 // Also see https://www.youtube.com/watch?v=HxaD_trXwRE
 
-// From parse.go
+// TODO: Can HasPrefix use be minimized vs. using peek/accept from original lex.go?
 
 // Pos represents a byte position in the original input text from which
 // this template was parsed.
@@ -327,6 +327,11 @@ Loop:
 				l.emit(itemText)
 			}
 			return lexLeftTemplate
+		} else if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+			if l.pos > l.start {
+				l.emit(itemText)
+			}
+			return lexRightTemplate
 		}
 		switch r := l.next(); {
 		case r == eof:
@@ -377,10 +382,6 @@ func lexRightTemplate(l *lexer) stateFn {
 
 // lexAction scans a template action.
 func lexAction(l *lexer) stateFn {
-	if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
-		return lexRightTemplate
-	}
-Loop:
 	for {
 		switch r := l.next(); {
 		case r == eof:
@@ -405,12 +406,12 @@ Loop:
 				return lexParam
 			}
 		case r == '}':
-			if n := l.peek(); n == '}' {
+			if strings.HasPrefix(l.input[l.pos:], "}") {
 				l.backup()
 				if l.pos > l.start {
 					l.emit(itemAction)
 				}
-				break Loop
+				return lexRightTemplate
 			}
 		case r == '|':
 			l.backup()
@@ -438,7 +439,6 @@ func lexParam(l *lexer) stateFn {
 
 	var inLink bool
 
-Loop:
 	for {
 		switch r := l.next(); {
 		case r == eof:
@@ -453,8 +453,7 @@ Loop:
 			if emittedEndOfLineParam {
 				emittedEndOfLineParam = false
 			} else {
-				n := l.peek()
-				if n == '|' || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+				if strings.HasPrefix(l.input[l.pos:], "|") || strings.HasPrefix(l.input[l.pos:], rightTemplate) {
 					l.backup()
 					if l.pos > l.start {
 						l.emit(itemParamText)
@@ -463,7 +462,7 @@ Loop:
 					l.pos += Pos(1)
 					l.ignore()
 					inNamedParam = false
-				} else if n == '=' {
+				} else if strings.HasPrefix(l.input[l.pos:], "=") {
 					// Unclosed template -- header start.
 					l.backup()
 					if l.pos > l.start {
@@ -556,7 +555,7 @@ Loop:
 			}
 		case r == '{':
 			if !inTag {
-				if n := l.peek(); n == '{' {
+				if strings.HasPrefix(l.input[l.pos:], "{") {
 					l.backup()
 					if l.pos > l.start {
 						l.emit(itemParamText)
@@ -571,12 +570,12 @@ Loop:
 				openCloseTag = false
 			}
 		case r == '}':
-			if n := l.peek(); n == '}' {
+			if strings.HasPrefix(l.input[l.pos:], "}") {
 				l.backup()
-				if !emittedEndOfLineParam {
+				if !emittedEndOfLineParam && l.pos > l.start {
 					l.emit(itemParamText)
 				}
-				break Loop
+				return lexRightTemplate
 			}
 			if openStartTag {
 				openStartTag = false
