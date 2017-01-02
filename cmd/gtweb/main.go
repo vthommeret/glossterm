@@ -11,28 +11,32 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/vthommeret/glossterm/lib/gt"
 	"github.com/vthommeret/glossterm/lib/radix"
-	"github.com/vthommeret/glossterm/lib/tpl"
 )
 
 const defaultWordsPath = "data/words.gob"
 const defaultIndexPath = "data/index.gob"
+const defaultGraphPath = "data/graph.db"
 const defaultPort = 8080
 
 const max = 10
 
 var wordsPath string
 var indexPath string
+var graphPath string
 var port int
 
 var words map[string]*gt.Word
 var index *radix.Tree
+var graph *cayley.Handle
 
 func init() {
 	flag.StringVar(&wordsPath, "w", defaultWordsPath, "Words path (gob format)")
 	flag.StringVar(&indexPath, "i", defaultIndexPath, "Index path (gob format)")
-
+	flag.StringVar(&graphPath, "g", defaultGraphPath, "Graph path (boltdb format)")
 	flag.IntVar(&port, "p", defaultPort, "Port (default 8080)")
 	flag.Parse()
 }
@@ -47,6 +51,7 @@ func main() {
 	}
 
 	// Get words
+	log.Printf("Loading words from %q.", wordsPath)
 	ws, err := gt.GetWords(wordsPath)
 	if err != nil {
 		log.Fatalf("Unable to get words: %s", err)
@@ -54,11 +59,20 @@ func main() {
 	words = ws
 
 	// Get index
+	log.Printf("Loading index from %q.", indexPath)
 	t, err := gt.GetIndex(indexPath)
 	if err != nil {
 		log.Fatalf("Unable to get radix tree: %s", err)
 	}
 	index = t
+
+	// Get graph
+	log.Printf("Loading graph from %q.", graphPath)
+	g, err := gt.GetGraph(graphPath)
+	if err != nil {
+		log.Fatalf("Unable to get graph: %s", err)
+	}
+	graph = g
 
 	// Setup handlers
 	http.HandleFunc("/", indexHandler)
@@ -126,48 +140,51 @@ type From struct {
 	Word string
 }
 
-// Latin descendants of Spanish words.
-func latinDescendants(w *gt.Word) (from *From, descendants []tpl.Link) {
-	var mention *tpl.Mention
-	var derived *tpl.Derived
+type Descendant struct {
+	Lang string
+	Word string
+}
 
-Loop:
-	for _, l := range w.Languages {
-		if l.Code == "es" {
-			for _, m := range l.Etymology.Mentions {
-				if m.Lang == "la" {
-					mention = &m
-					break Loop
-				}
-			}
-			for _, d := range l.Etymology.Derived {
-				if d.FromLang == "la" || d.FromLang == "LL" { // Latin or Late Latin.
-					derived = &d
-					break Loop
-				}
-			}
-		}
-	}
-	var wordName string
-	if mention != nil {
-		wordName = mention.Word
-		from = &From{mention.Lang, mention.Word}
-	} else if derived != nil {
-		wordName = derived.FromWord
-		from = &From{derived.FromLang, derived.FromWord}
-	} else {
+// Latin descendants of Spanish words.
+func latinDescendants(w *gt.Word) (*From, []Descendant) {
+	n := fmt.Sprintf("es/%s", w.Name)
+
+	// Find mentions
+	p := cayley.StartPath(graph, quad.String(n)).Out(quad.String("mentions"))
+	rs, err := gt.QueryGraph(graph, p)
+	if err != nil || len(rs) == 0 {
 		return nil, nil
 	}
-	if w, ok := words[wordName]; ok {
-		for _, l := range w.Languages {
-			if l.Code == "la" {
-				for _, d := range l.Descendants {
-					if d.Lang != "es" {
-						descendants = append(descendants, d)
-					}
-				}
-			}
-		}
+
+	// Return the first mention
+	lang, word := idParts(rs[0])
+	from := From{
+		Lang: lang,
+		Word: word,
 	}
-	return from, descendants
+
+	// Find descendants
+	p = p.Out(quad.String("descendant"))
+	rs, err = gt.QueryGraph(graph, p)
+	if err != nil {
+		return nil, nil
+	}
+
+	return &from, toDescendants(rs)
+}
+
+func toDescendants(is []interface{}) (ds []Descendant) {
+	for _, i := range is {
+		lang, word := idParts(i)
+		ds = append(ds, Descendant{
+			Lang: lang,
+			Word: word,
+		})
+	}
+	return ds
+}
+
+func idParts(id interface{}) (string, string) {
+	parts := strings.Split(id.(string), "/")
+	return parts[0], parts[1]
 }
