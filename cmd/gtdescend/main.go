@@ -24,16 +24,17 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("Must specify word.")
 	}
-	w := fmt.Sprintf("es/%s", os.Args[1])
+	w := quad.String(fmt.Sprintf("es/%s", os.Args[1]))
 
 	graph, err := gt.GetGraph(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q graph: %s", input, err)
 	}
 
-	p := cayley.StartPath(graph, quad.String(w)).
-		Out(quad.String("mentions")).
-		Out(quad.String("descendant"))
+	s := cayley.StartPath(graph, w)
+	ms := s.Out(quad.String("mentions"))
+	ds := s.Out(quad.String("derived-from"))
+	p := ms.Or(ds).Out(quad.String("descendant"))
 
 	rs, err := gt.QueryGraph(graph, p)
 	if err != nil {

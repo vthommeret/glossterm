@@ -147,10 +147,13 @@ type Descendant struct {
 
 // Latin descendants of Spanish words.
 func latinDescendants(w *gt.Word) (*From, []Descendant) {
-	n := fmt.Sprintf("es/%s", w.Name)
+	n := quad.String(fmt.Sprintf("es/%s", w.Name))
 
-	// Find mentions
-	p := cayley.StartPath(graph, quad.String(n)).Out(quad.String("mentions"))
+	// Find mentions/derivations
+	s := cayley.StartPath(graph, n)
+	ms := s.Out(quad.String("mentions"))
+	ds := s.Out(quad.String("derived-from"))
+	p := ms.Or(ds)
 	rs, err := gt.QueryGraph(graph, p)
 	if err != nil || len(rs) == 0 {
 		return nil, nil
