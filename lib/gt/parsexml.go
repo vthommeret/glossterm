@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/vthommeret/glossterm/lib/lang"
 )
 
 type Redirect struct {
@@ -100,7 +102,7 @@ Parse:
 			if se.Name.Local == "page" {
 				var p Page
 				d.DecodeElement(&p, &se)
-				w, err := Parse(p, DefaultLangMap)
+				w, err := Parse(p, lang.DefaultLangMap)
 				if err != nil {
 					errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
 					continue Parse

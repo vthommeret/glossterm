@@ -16,5 +16,6 @@ type Derived struct {
 func (tpl *Template) ToDerived() Derived {
 	d := Derived{}
 	tpl.toConcrete(reflect.TypeOf(d), reflect.ValueOf(&d))
+	d.FromWord = toEntryName(d.FromLang, d.FromWord)
 	return d
 }

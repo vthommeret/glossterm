@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/vthommeret/glossterm/lib/lang"
 )
 
 func main() {
@@ -40,7 +41,7 @@ func main() {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := gt.Parse(p, gt.DefaultLangMap)
+	w, err := gt.Parse(p, lang.DefaultLangMap)
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}

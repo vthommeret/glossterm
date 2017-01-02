@@ -15,5 +15,6 @@ type Link struct {
 func (tpl *Template) ToLink() Link {
 	l := Link{}
 	tpl.toConcrete(reflect.TypeOf(l), reflect.ValueOf(&l))
+	l.Word = toEntryName(l.Lang, l.Word)
 	return l
 }

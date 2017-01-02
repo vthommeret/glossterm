@@ -16,5 +16,6 @@ type Borrow struct {
 func (tpl *Template) ToBorrow() Borrow {
 	b := Borrow{}
 	tpl.toConcrete(reflect.TypeOf(b), reflect.ValueOf(&b))
+	b.FromWord = toEntryName(b.FromLang, b.FromWord)
 	return b
 }

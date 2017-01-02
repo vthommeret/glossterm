@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vthommeret/glossterm/lib/lang"
 	"github.com/vthommeret/glossterm/lib/tpl"
 )
 
@@ -122,9 +123,9 @@ Parse:
 			}
 		case itemText:
 			if inLanguageHeader {
-				if lang, ok := CanonicalLangs[i.val]; ok {
-					if _, ok := langMap[lang.Code]; ok {
-						language.Code = lang.Code
+				if l, ok := lang.CanonicalLangs[i.val]; ok {
+					if _, ok := langMap[l.Code]; ok {
+						language.Code = l.Code
 					} else {
 						language = nil
 					}

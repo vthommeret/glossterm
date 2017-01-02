@@ -3,6 +3,8 @@ package tpl
 import (
 	"reflect"
 	"strings"
+
+	"github.com/vthommeret/glossterm/lib/lang"
 )
 
 type Template struct {
@@ -44,4 +46,12 @@ func (tpl *Template) toConcrete(t reflect.Type, v reflect.Value) {
 			}
 		}
 	}
+}
+
+func toEntryName(langName string, name string) string {
+	l, ok := lang.Langs[langName]
+	if !ok {
+		return name
+	}
+	return l.MakeEntryName(name)
 }

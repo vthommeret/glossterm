@@ -15,5 +15,6 @@ type Mention struct {
 func (tpl *Template) ToMention() Mention {
 	m := Mention{}
 	tpl.toConcrete(reflect.TypeOf(m), reflect.ValueOf(&m))
+	m.Word = toEntryName(m.Lang, m.Word)
 	return m
 }
