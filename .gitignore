@@ -4,4 +4,5 @@
 *.lex
 *.parse
 *.bleve
+*.db
 .DS_Store
