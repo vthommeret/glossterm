@@ -65,12 +65,12 @@ func main() {
 	for _, w := range words {
 		for _, l := range w.Languages {
 			if l.Code == "es" {
-				for _, m := range l.Etymology.Mentions {
-					if m.Lang == "la" {
+				for _, b := range l.Etymology.Borrows {
+					if b.FromLang == "la" {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"mentions",
-							fmt.Sprintf("%s/%s", m.Lang, m.Word),
+							"borrowing-from",
+							fmt.Sprintf("%s/%s", b.FromLang, b.FromWord),
 							nil,
 						))
 						quadCount++
@@ -93,6 +93,17 @@ func main() {
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"inherited-from",
 							fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
+							nil,
+						))
+						quadCount++
+					}
+				}
+				for _, m := range l.Etymology.Mentions {
+					if m.Lang == "la" {
+						quads = append(quads, quad.Make(
+							fmt.Sprintf("%s/%s", l.Code, w.Name),
+							"mentions",
+							fmt.Sprintf("%s/%s", m.Lang, m.Word),
 							nil,
 						))
 						quadCount++

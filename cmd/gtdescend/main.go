@@ -32,10 +32,11 @@ func main() {
 	}
 
 	s := cayley.StartPath(graph, w)
-	ms := s.Out(quad.String("mentions"))
+	bs := s.Out(quad.String("borrowing-from"))
 	ds := s.Out(quad.String("derived-from"))
 	is := s.Out(quad.String("inherited-from"))
-	p := ms.Or(ds).Or(is).Out(quad.String("descendant"))
+	ms := s.Out(quad.String("mentions"))
+	p := bs.Or(ds).Or(is).Or(ms).Out(quad.String("descendant"))
 
 	rs, err := gt.QueryGraph(graph, p)
 	if err != nil {
