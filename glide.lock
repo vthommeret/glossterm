@@ -1,10 +1,45 @@
-hash: 22545ac68f21982900dbb5b2faea81f79353f5b1f6ac6c668760888840b49455
-updated: 2016-12-25T22:47:51.660389252-08:00
+hash: ad7341166167b85828f93a49d41c07401cfb6d70da7f0f59cdbdf922a5fc1565
+updated: 2017-01-01T23:46:31.288000045-06:00
 imports:
 - name: github.com/blevesearch/segment
-  version: db70c57796cc8c310613541dfade3dce627d09c7
+  version: 762005e7a34fd909a84586299f1dd457371d36ee
+- name: github.com/boltdb/bolt
+  version: a705895fdad108f053eae7ee011ed94a0541ee13
+- name: github.com/cayleygraph/cayley
+  version: f2d4f4900a6a2deb2d4cb0ff05664ae477533042
+  subpackages:
+  - clog
+  - graph
+  - graph/bolt
+  - graph/iterator
+  - graph/memstore
+  - graph/memstore/b
+  - graph/path
+  - graph/proto
+  - quad
+  - quad/pquads
+  - quad/pquads/pio
+  - voc
+  - voc/schema
+  - writer
+- name: github.com/gogo/protobuf
+  version: 84af2615df1ba1d35cc975ba94b64ee67d6c196e
+  subpackages:
+  - gogoproto
+  - proto
+  - protoc-gen-gogo/descriptor
+- name: github.com/pborman/uuid
+  version: 5007efa264d92316c43112bc573e754bc889b7b1
+- name: golang.org/x/net
+  version: 8fd7f25955530b92e73e9e1932a41b522b22ccd9
+  subpackages:
+  - context
+- name: golang.org/x/sys
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  subpackages:
+  - unix
 - name: golang.org/x/text
-  version: a49bea13b776691cb1b49873e5d8df96ec74831a
+  version: fd889fe3a20f4878f5f47672fd3ca5b86db005e2
   subpackages:
   - runes
   - transform
