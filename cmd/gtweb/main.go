@@ -153,8 +153,9 @@ func latinDescendants(w *gt.Word) (*From, []Descendant) {
 	s := cayley.StartPath(graph, n)
 	ms := s.Out(quad.String("mentions"))
 	ds := s.Out(quad.String("derived-from"))
-	p := ms.Or(ds).Has("descendant")
-	rs, err := gt.QueryGraph(graph, p)
+	is := s.Out(quad.String("inherited-from"))
+	p := ms.Or(ds).Or(is)
+	rs, err := gt.QueryGraph(graph, p.Has("descendant"))
 	if err != nil || len(rs) == 0 {
 		return nil, nil
 	}

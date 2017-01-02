@@ -87,6 +87,17 @@ func main() {
 						quadCount++
 					}
 				}
+				for _, i := range l.Etymology.Inherited {
+					if i.FromLang == "la" {
+						quads = append(quads, quad.Make(
+							fmt.Sprintf("%s/%s", l.Code, w.Name),
+							"inherited-from",
+							fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
+							nil,
+						))
+						quadCount++
+					}
+				}
 			} else if l.Code == "la" {
 				for _, d := range l.Descendants {
 					if d.Lang != "es" {
