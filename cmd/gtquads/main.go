@@ -66,11 +66,22 @@ func main() {
 		for _, l := range w.Languages {
 			if l.Code == "es" {
 				for _, m := range l.Etymology.Mentions {
-					if m.Lang == "la" || m.Lang == "LL" { // Latin or Late Latin
+					if m.Lang == "la" {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"mentions",
 							fmt.Sprintf("%s/%s", m.Lang, m.Word),
+							nil,
+						))
+						quadCount++
+					}
+				}
+				for _, d := range l.Etymology.Derived {
+					if d.FromLang == "la" {
+						quads = append(quads, quad.Make(
+							fmt.Sprintf("%s/%s", l.Code, w.Name),
+							"derived-from",
+							fmt.Sprintf("%s/%s", d.FromLang, d.FromWord),
 							nil,
 						))
 						quadCount++
