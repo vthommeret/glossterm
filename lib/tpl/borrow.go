@@ -4,8 +4,8 @@ import "reflect"
 
 // https://en.wiktionary.org/wiki/Template:borrowing
 type Borrow struct {
-	Lang         string
-	FromLang     string
+	Lang         string `lang:"true"`
+	FromLang     string `lang:"true"`
 	FromWord     string
 	Alt          string `names:"alt"`
 	Gloss        string `names:"t,gloss"`

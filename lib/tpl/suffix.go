@@ -6,7 +6,7 @@ import "reflect"
 type Suffix struct {
 	Root   string
 	Suffix string
-	Lang   string `names:"lang"`
+	Lang   string `names:"lang", lang:"true"`
 }
 
 func (tpl *Template) ToSuffix() Suffix {

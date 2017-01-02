@@ -40,10 +40,15 @@ func (tpl *Template) toConcrete(t reflect.Type, v reflect.Value) {
 
 	// Set named parameters.
 	for i := 0; i < t.NumField(); i++ {
-		for _, p := range strings.Split(t.Field(i).Tag.Get("names"), ",") {
+		tf := t.Field(i)
+		vf := v.Field(i)
+		for _, p := range strings.Split(tf.Tag.Get("names"), ",") {
 			if val, ok := paramMap[p]; ok {
-				v.Field(i).SetString(val)
+				vf.SetString(val)
 			}
+		}
+		if tf.Tag.Get("lang") != "" {
+			vf.SetString(lang.ToParent(vf.String()))
 		}
 	}
 }

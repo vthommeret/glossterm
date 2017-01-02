@@ -4,7 +4,7 @@ import "reflect"
 
 // https://en.wiktionary.org/wiki/Template:mention
 type Mention struct {
-	Lang         string
+	Lang         string `lang:"true"`
 	Word         string
 	Alt          string
 	Gloss        string `names:"t"`

@@ -6,7 +6,7 @@ import "reflect"
 type Prefix struct {
 	Prefix string
 	Root   string
-	Lang   string `names:"lang"`
+	Lang   string `names:"lang", lang:"true"`
 }
 
 func (tpl *Template) ToPrefix() Prefix {
