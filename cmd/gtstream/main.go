@@ -8,8 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/vthommeret/glossterm/lib/gt"
 )
@@ -30,9 +28,7 @@ func init() {
 }
 
 func main() {
-	outputExt := filepath.Ext(outputFile)
-	outputBase := strings.TrimSuffix(outputFile, outputExt)
-	outputCompressedFile := fmt.Sprintf("%s.gob.gz", outputBase)
+	outputCompressedFile := fmt.Sprintf("%s.gz", outputFile)
 
 	files, err := gt.GetSplitFiles(inputFile)
 	if err != nil {

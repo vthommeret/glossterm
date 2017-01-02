@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/blevesearch/segment"
@@ -29,9 +28,7 @@ func init() {
 }
 
 func main() {
-	outputExt := filepath.Ext(output)
-	outputBase := strings.TrimSuffix(output, outputExt)
-	outputCompressed := fmt.Sprintf("%s.gob.gz", outputBase)
+	outputCompressed := fmt.Sprintf("%s.gz", output)
 
 	// Get words.
 	words, err := gt.GetWords(input)
