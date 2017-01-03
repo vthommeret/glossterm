@@ -232,7 +232,7 @@ func (l *lexer) NextItem() item {
 // NewLexer creates a new scanner for the input string.
 func NewLexer(input string) *lexer {
 	l := &lexer{
-		input: normalizeInput(input),
+		input: strings.TrimSpace(input),
 		items: make(chan item),
 	}
 	go l.run()
@@ -255,11 +255,6 @@ func (l *lexer) Print() {
 			fmt.Printf("%s: %q\n", i.typ, i.val)
 		}
 	}
-}
-
-// Simplifies parsing.
-func normalizeInput(s string) string {
-	return fmt.Sprintf("%s\n", strings.TrimSpace(s))
 }
 
 // run runs the state machine for the lexer.
@@ -374,13 +369,12 @@ Loop:
 
 		for i := headers; i > 0; i-- {
 			delim := strings.Repeat(headerDelim, i)
-			rightHeader := delim + "\n"
-			if strings.HasPrefix(l.input[l.pos:], rightHeader) {
+			if strings.HasPrefix(l.input[l.pos:], delim+"\n") || l.input[l.pos:] == delim {
 				if l.pos > l.start {
 					l.emit(itemText)
 				}
 				l.ignore()
-				return lexDelim(itemHeaderEnd, rightHeader, i)
+				return lexDelim(itemHeaderEnd, delim, i)
 			}
 		}
 		if strings.HasPrefix(l.input[l.pos:], listItemEndDelim) {

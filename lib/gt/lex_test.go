@@ -13,18 +13,17 @@ func TestLex(t *testing.T) {
 		want  []item
 	}{
 		{"hello", "Simple text", []item{
-			it(itemText, "hello\n"),
+			it(itemText, "hello"),
 		}},
 		{"==header==", "Header", []item{
 			ih(itemHeaderStart, "==", 2),
 			it(itemText, "header"),
-			ih(itemHeaderEnd, "==\n", 2),
+			ih(itemHeaderEnd, "==", 2),
 		}},
 		{"{{t}}", "Simple action", []item{
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "t"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|1|2}}", "Action, two positional params", []item{
 			it(itemLeftTemplate, "{{"),
@@ -34,7 +33,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "2"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|1||3}}", "Action, empty param", []item{
 			it(itemLeftTemplate, "{{"),
@@ -46,7 +44,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "3"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|1|a=2}}", "Action, positional param, named param", []item{
 			it(itemLeftTemplate, "{{"),
@@ -57,7 +54,6 @@ func TestLex(t *testing.T) {
 			it(itemParamName, "a"),
 			it(itemParamText, "2"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|<strong>e=mc^2</strong>}}", "Equals in tag", []item{
 			it(itemLeftTemplate, "{{"),
@@ -65,7 +61,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "<strong>e=mc^2</strong>"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|[[was|Was] I?}}", "Pipe in link", []item{
 			it(itemLeftTemplate, "{{"),
@@ -73,7 +68,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "[[was|Was] I?"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|<डलर>}}", "Non-ASCII tag name", []item{
 			it(itemLeftTemplate, "{{"),
@@ -81,7 +75,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "<डलर>"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{m|la|dictus{{m|la|dictus}}}}", "Nested templates", []item{
 			it(itemLeftTemplate, "{{"),
@@ -98,30 +91,29 @@ func TestLex(t *testing.T) {
 			it(itemParamText, "dictus"),
 			it(itemRightTemplate, "}}"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"start{{t\nend", "Unclosed template action", []item{
 			it(itemText, "start"),
 			it(itemText, "{{t"),
-			it(itemText, "end\n"),
+			it(itemText, "end"),
 		}},
 		{"start{{t\n==Header", "Unclosed template action (header)", []item{
 			it(itemText, "start"),
 			it(itemText, "{{t"),
 			it(itemText, "\n"),
 			ih(itemHeaderStart, "==", 2),
-			it(itemText, "Header\n"),
+			it(itemText, "Header"),
 		}},
 		{"start{{t|1\nmiddle\nend", "Unclosed template param", []item{
 			it(itemText, "start"),
-			it(itemText, "{{t|1\nmiddle\nend\n"),
+			it(itemText, "{{t|1\nmiddle\nend"),
 		}},
 		{"start{{t|1\n==Header", "Unclosed template param (header)", []item{
 			it(itemText, "start"),
 			it(itemText, "{{t|1"),
 			it(itemText, "\n"),
 			ih(itemHeaderStart, "==", 2),
-			it(itemText, "Header\n"),
+			it(itemText, "Header"),
 		}},
 		{"start{{t|1\n{{new}}", "Unclosed template param (nested)", []item{
 			it(itemText, "start"),
@@ -129,7 +121,6 @@ func TestLex(t *testing.T) {
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "new"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t|multi\nline}}", "Multi-line template", []item{
 			it(itemLeftTemplate, "{{"),
@@ -137,7 +128,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "multi\nline"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{t\n\t\t|1}}", "Multi-line template w/ leading whitespace", []item{
 			it(itemLeftTemplate, "{{"),
@@ -145,7 +135,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "\n\t\t|"),
 			it(itemParamText, "1"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{gloss|outer{{gloss|inner{{gloss|inner-inner}} and some more {{gloss|ok}} and even more {{gloss|ok}}", "Crazy nesting 1", []item{
 			it(itemText, "{{gloss|outer{{gloss|inner"),
@@ -166,7 +155,6 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "ok"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"{{gloss|outer{{gloss|inner{{gloss|inner-inner}} and some more {{gloss|ok and even more {{gloss|ok}}", "Crazy nesting 2", []item{
 			it(itemText, "{{gloss|outer{{gloss|inner"),
@@ -181,14 +169,13 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemParamText, "ok"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "\n"),
 		}},
 		{"A [[simple]] link", "A simple link", []item{
 			it(itemText, "A "),
 			it(itemLeftLink, "[["),
 			it(itemLink, "simple"),
 			it(itemRightLink, "]]"),
-			it(itemText, " link\n"),
+			it(itemText, " link"),
 		}},
 		{"A [[simple|named]] link", "A simple, named link", []item{
 			it(itemText, "A "),
@@ -197,11 +184,11 @@ func TestLex(t *testing.T) {
 			it(itemLinkDelim, "|"),
 			it(itemLinkName, "named"),
 			it(itemRightLink, "]]"),
-			it(itemText, " link\n"),
+			it(itemText, " link"),
 		}},
 		{"An [[unclosed|named] link", "An unclosed, named link", []item{
 			it(itemText, "An "),
-			it(itemText, "[[unclosed|named] link\n"),
+			it(itemText, "[[unclosed|named] link"),
 		}},
 		{"An [[embedded|named{{template}}]] link", "Embedded template in named link", []item{
 			it(itemText, "An "),
@@ -209,13 +196,13 @@ func TestLex(t *testing.T) {
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "template"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "]] link\n"),
+			it(itemText, "]] link"),
 		}},
 		{"A [[multi\nline]] link", "A multiline link", []item{
 			// TODO: Try to merge next two tokens?
 			it(itemText, "A "),
 			it(itemText, "[[multi\n"),
-			it(itemText, "line]] link\n"),
+			it(itemText, "line]] link"),
 		}},
 		{"A [[simple [[nested]]]] link", "A simple nested link", []item{
 			it(itemText, "A "),
@@ -223,15 +210,15 @@ func TestLex(t *testing.T) {
 			it(itemLeftLink, "[["),
 			it(itemLink, "nested"),
 			it(itemRightLink, "]]"),
-			it(itemText, "]] link\n"),
+			it(itemText, "]] link"),
 		}},
 		{"An [[unclosed link", "An unclosed link", []item{
 			it(itemText, "An "),
-			it(itemText, "[[unclosed link\n"),
+			it(itemText, "[[unclosed link"),
 		}},
 		{"A [[partially closed] link", "A partially closed link", []item{
 			it(itemText, "A "),
-			it(itemText, "[[partially closed] link\n"),
+			it(itemText, "[[partially closed] link"),
 		}},
 		{"An [[embedded {{template}}]]", "An embedded template", []item{
 			it(itemText, "An "),
@@ -239,22 +226,22 @@ func TestLex(t *testing.T) {
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "template"),
 			it(itemRightTemplate, "}}"),
-			it(itemText, "]]\n"),
+			it(itemText, "]]"),
 		}},
 		{"====Descendants====\n* English: [[lettuce]]", "List items", []item{
 			ih(itemHeaderStart, "====", 4),
 			it(itemText, "Descendants"),
-			ih(itemHeaderEnd, "====\n", 4),
+			ih(itemHeaderEnd, "====", 4),
+			it(itemText, "\n"),
 			it(itemListItemStart, "* "),
 			it(itemListItemPrefix, "English"),
 			it(itemListItemEnd, ": "),
 			it(itemLeftLink, "[["),
 			it(itemLink, "lettuce"),
 			it(itemRightLink, "]]"),
-			it(itemText, "\n"),
 		}},
-		{"Text with * asterisk ignored", "Ignored asterisk", []item{
-			it(itemText, "Text with * asterisk ignored\n"),
+		{"Text with * asterisk ignored.", "Ignored asterisk", []item{
+			it(itemText, "Text with * asterisk ignored."),
 		}},
 	}
 	for _, tt := range tests {
