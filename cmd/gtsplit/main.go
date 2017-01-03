@@ -17,22 +17,19 @@ import (
 const total = 5500000 // approximate
 const step = total / 100
 
+const defaultInputFile = "data/enwiktionary-latest-pages-articles.xml"
 const defaultOutputFile = "cmd/gtsplit/pages.xml"
 
 var inputFile string
 var outputFile string
 
 func init() {
-	flag.StringVar(&inputFile, "i", "", "Input file (xml format)")
+	flag.StringVar(&inputFile, "i", defaultInputFile, "Input file (xml format)")
 	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (xml format)")
 	flag.Parse()
 }
 
 func main() {
-	if inputFile == "" {
-		log.Fatalf("Must specify input file (-i)")
-	}
-
 	in, err := os.Open(inputFile)
 	if err != nil {
 		log.Fatalf("Unable to open %q input file: %s", inputFile, err)
