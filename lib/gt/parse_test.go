@@ -80,13 +80,14 @@ func TestParse(t *testing.T) {
 		{
 			"Language list",
 			"papyrus",
-			"==Latin==\n\n====Descendants====\n* English: [[paper]]\n* French: {{l|fr|papyrus}}, {{l|fr|papier}}",
+			"==Latin==\n\n====Descendants====\n* English: {{l|en|papyrus}}, [[paper]]\n* French: {{l|fr|papyrus}}, {{l|fr|papier}}",
 			Word{
 				Name: "papyrus",
 				Languages: []Language{
 					{
 						Code: "la",
 						Descendants: []tpl.Link{
+							{Lang: "en", Word: "papyrus"},
 							{Lang: "en", Word: "paper"},
 							{Lang: "fr", Word: "papyrus"},
 							{Lang: "fr", Word: "papier"},

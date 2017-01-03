@@ -151,11 +151,11 @@ Parse:
 		case itemText:
 			// TODO: More intelligently handle whitespace in lexer. Emit newline
 			// tokens and ignore otherwise unimportant whitespace.
-			if language != nil && listItem != nil {
+			if language != nil && listItem != nil && strings.Contains(i.val, "\n") {
 				language.Descendants =
 					append(language.Descendants, listItem.TplLinks(langMap)...)
+				listItem = nil
 			}
-			listItem = nil
 			if inLanguageHeader {
 				if l, ok := lang.CanonicalLangs[i.val]; ok {
 					if _, ok := langMap[l.Code]; ok {
