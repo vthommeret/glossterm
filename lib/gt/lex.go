@@ -422,7 +422,7 @@ func lexAction(l *lexer) stateFn {
 			// absorb.
 		}
 	}
-	return lexAction
+	return lexText
 }
 
 // lexParam scans a template parameter.
