@@ -104,6 +104,11 @@ var definitionTpl = _.template(
 
 input.focus();
 
+form.on('submit', function(e) {
+  e.preventDefault();
+  input.blur();
+});
+
 input.on('keyup', function(e) {
   var query = $.trim(input.val());
   if (query != lastQuery) {
