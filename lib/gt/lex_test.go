@@ -199,6 +199,73 @@ func TestLex(t *testing.T) {
 			it(itemRightTemplate, "}}"),
 			it(itemText, "\n"),
 		}},
+		{"A [[simple]] link", "A simple link", []item{
+			it(itemText, "\n"),
+			it(itemText, "A "),
+			it(itemLeftLink, "[["),
+			it(itemLink, "simple"),
+			it(itemRightLink, "]]"),
+			it(itemText, " link\n"),
+		}},
+		{"A [[simple|named]] link", "A simple, named link", []item{
+			it(itemText, "\n"),
+			it(itemText, "A "),
+			it(itemLeftLink, "[["),
+			it(itemLink, "simple"),
+			it(itemLinkDelim, "|"),
+			it(itemLinkName, "named"),
+			it(itemRightLink, "]]"),
+			it(itemText, " link\n"),
+		}},
+		{"An [[unclosed|named] link", "An unclosed, named link", []item{
+			it(itemText, "\n"),
+			it(itemText, "An "),
+			it(itemText, "[[unclosed|named] link\n"),
+		}},
+		{"An [[embedded|named{{template}}]] link", "Embedded template in named link", []item{
+			it(itemText, "\n"),
+			it(itemText, "An "),
+			it(itemText, "[[embedded|named"),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "template"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, "]] link\n"),
+		}},
+		{"A [[multi\nline]] link", "A multiline link", []item{
+			it(itemText, "\n"),
+			// TODO: Try to merge next two tokens?
+			it(itemText, "A "),
+			it(itemText, "[[multi\n"),
+			it(itemText, "line]] link\n"),
+		}},
+		{"A [[simple [[nested]]]] link", "A simple nested link", []item{
+			it(itemText, "\n"),
+			it(itemText, "A "),
+			it(itemText, "[[simple "),
+			it(itemLeftLink, "[["),
+			it(itemLink, "nested"),
+			it(itemRightLink, "]]"),
+			it(itemText, "]] link\n"),
+		}},
+		{"An [[unclosed link", "An unclosed link", []item{
+			it(itemText, "\n"),
+			it(itemText, "An "),
+			it(itemText, "[[unclosed link\n"),
+		}},
+		{"A [[partially closed] link", "A partially closed link", []item{
+			it(itemText, "\n"),
+			it(itemText, "A "),
+			it(itemText, "[[partially closed] link\n"),
+		}},
+		{"An [[embedded {{template}}]]", "An embedded template", []item{
+			it(itemText, "\n"),
+			it(itemText, "An "),
+			it(itemText, "[[embedded "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "template"),
+			it(itemRightTemplate, "}}"),
+			it(itemText, "]]\n"),
+		}},
 	}
 	for _, tt := range tests {
 		l := NewLexer(tt.input)

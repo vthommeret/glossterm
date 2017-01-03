@@ -54,6 +54,11 @@ const (
 	itemText          // Plain text
 	itemLeftTemplate  // Left template delimiter
 	itemRightTemplate // Right template delimiter
+	itemLeftLink      // Left link delimiter
+	itemRightLink     // Right link delimiter
+	itemLink          // Link text
+	itemLinkDelim     // Link delimiter
+	itemLinkName      // Link name
 )
 
 // Make the types prettyprint.
@@ -70,6 +75,11 @@ var itemName = map[itemType]string{
 	itemText:          "text",
 	itemLeftTemplate:  "left template",
 	itemRightTemplate: "right template",
+	itemLeftLink:      "left link",
+	itemRightLink:     "right link",
+	itemLink:          "link",
+	itemLinkDelim:     "link delim",
+	itemLinkName:      "link name",
 }
 
 // From http://w3c.github.io/html/syntax.html#void-elements
@@ -161,10 +171,11 @@ func (l *lexer) emit(t itemType) {
 func (l *lexer) buffer(t itemType) {
 	i := item{t, l.start, l.input[l.start:l.pos], 0, false}
 	l.buffered.items = append(l.buffered.items, &i)
-	if t == itemLeftTemplate {
+	switch t {
+	case itemLeftTemplate:
 		l.buffered.tpls = append(l.buffered.tpls, &i)
 		l.buffered.openTpls.push(len(l.buffered.tpls) - 1)
-	} else if t == itemRightTemplate {
+	case itemRightTemplate:
 		lastOpen := l.buffered.openTpls.pop()
 		l.buffered.tpls[lastOpen].balanced = true
 	}
@@ -253,8 +264,8 @@ func (l *lexer) run() {
 	close(l.items)
 }
 
-// drainBuffer drains the tpl buffer
-func (l *lexer) drainBuffer() {
+// drainTplBuffer drains the tpl buffer
+func (l *lexer) drainTplBuffer() {
 	s := item{typ: itemText}
 	openTpls := stack{}
 	for n, i := range l.buffered.items {
@@ -284,6 +295,25 @@ func (l *lexer) drainBuffer() {
 	l.buffered = buffer{}
 }
 
+// drainLinkBuffer drains the link buffer
+func (l *lexer) drainLinkBuffer(asText bool) {
+	s := item{typ: itemText}
+	for _, i := range l.buffered.items {
+		if asText {
+			if s.val == "" {
+				s.pos = i.pos
+			}
+			s.val += i.val
+		} else {
+			l.items <- *i
+		}
+	}
+	if s.val != "" {
+		l.items <- s
+	}
+	l.buffered = buffer{}
+}
+
 // state functions
 
 const (
@@ -293,6 +323,9 @@ const (
 	rightTemplate = "}}"
 	paramEqual    = "="
 	paramDelim    = "|"
+	leftLink      = "[["
+	rightLink     = "]]"
+	linkDelim     = "|"
 	spaceChars    = " \t\r\n"
 )
 
@@ -327,14 +360,21 @@ Loop:
 			}
 			return lexLeftTemplate
 		} else if strings.HasPrefix(l.input[l.pos:], rightTemplate) {
+			// TODO: Can this condition be removed?
+			// Need to properly support unclosed "}}".
 			if l.pos > l.start {
 				l.emit(itemText)
 			}
 			return lexRightTemplate
+		} else if strings.HasPrefix(l.input[l.pos:], leftLink) {
+			if l.pos > l.start {
+				l.emit(itemText)
+			}
+			return lexLeftLink
 		}
 		switch r := l.next(); {
 		case r == eof:
-			l.drainBuffer()
+			l.drainTplBuffer()
 			break Loop
 		case isEndOfLine(r):
 			if l.pos > l.start {
@@ -374,7 +414,7 @@ func lexRightTemplate(l *lexer) stateFn {
 	l.pos += Pos(len(rightTemplate))
 	l.emit(itemRightTemplate)
 	if len(l.buffered.openTpls) == 0 {
-		l.drainBuffer()
+		l.drainTplBuffer()
 	}
 	return lexText
 }
@@ -385,7 +425,7 @@ func lexAction(l *lexer) stateFn {
 		switch r := l.next(); {
 		case r == eof:
 			// Unclosed template -- eof.
-			l.drainBuffer()
+			l.drainTplBuffer()
 			return lexText
 		case isEndOfLine(r):
 			if strings.HasPrefix(l.input[l.pos:], headerDelim) {
@@ -394,7 +434,7 @@ func lexAction(l *lexer) stateFn {
 				if l.pos > l.start {
 					l.emit(itemAction)
 				}
-				l.drainBuffer()
+				l.drainTplBuffer()
 				return lexText
 			} else {
 				l.backup()
@@ -446,7 +486,7 @@ func lexParam(l *lexer) stateFn {
 			if l.pos > l.start {
 				l.emit(itemParamText)
 			}
-			l.drainBuffer()
+			l.drainTplBuffer()
 			return lexText
 		case isEndOfLine(r):
 			if emittedEndOfLineParam {
@@ -467,7 +507,7 @@ func lexParam(l *lexer) stateFn {
 					if l.pos > l.start {
 						l.emit(itemParamText)
 					}
-					l.drainBuffer()
+					l.drainTplBuffer()
 					return lexText
 				}
 			}
@@ -595,13 +635,127 @@ func lexParam(l *lexer) stateFn {
 				// Unclosed template (invalid character)
 				l.backup()
 				l.ignore() // Ignore previous whitespace.
-				l.drainBuffer()
+				l.drainTplBuffer()
 				return lexText
 			}
 			// absorb.
 		}
 	}
 	return lexAction
+}
+
+// lexLeftLink scans the left link delimiter.
+func lexLeftLink(l *lexer) stateFn {
+	_ = "breakpoint"
+	l.buffered.buffering = true
+	l.pos += Pos(len(leftLink))
+	l.emit(itemLeftLink)
+	return lexLink
+}
+
+// lexRightLink scans the right link delimiter.
+func lexRightLink(l *lexer) stateFn {
+	_ = "breakpoint"
+	l.pos += Pos(len(rightLink))
+	l.emit(itemRightLink)
+	l.drainLinkBuffer(false)
+	return lexText
+}
+
+// lexLink scans a link.
+func lexLink(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == eof:
+			_ = "breakpoint"
+			// Unclosed link -- eof.
+			if l.pos > l.start {
+				l.emit(itemLink)
+			}
+			l.drainLinkBuffer(true)
+			return lexText
+		case isEndOfLine(r):
+			_ = "breakpoint"
+			// Unclosed link -- end of line.
+			l.emit(itemLink)
+			l.drainLinkBuffer(true)
+			return lexText
+		case r == '[', r == '{', r == '}':
+			_ = "breakpoint"
+			// Invalid link -- template start/close.
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemLink)
+			}
+			l.drainLinkBuffer(true)
+			return lexText
+		case r == ']':
+			_ = "breakpoint"
+			if strings.HasPrefix(l.input[l.pos:], "]") {
+				l.backup()
+				if l.pos > l.start {
+					l.emit(itemLink)
+				}
+				return lexRightLink
+			}
+		case r == '|':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemLink)
+			}
+			l.pos += Pos(len(linkDelim))
+			l.emit(itemLinkDelim)
+			return lexLinkName
+		default:
+			_ = "breakpoint"
+			// absorb.
+		}
+	}
+	return lexText
+}
+
+// lexLinkName scans a link name.
+func lexLinkName(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == eof:
+			_ = "breakpoint"
+			// Unclosed link name -- eof.
+			if l.pos > l.start {
+				l.emit(itemLinkName)
+			}
+			l.drainLinkBuffer(true)
+			return lexText
+		case isEndOfLine(r):
+			_ = "breakpoint"
+			// Unclosed link name -- end of line.
+			l.emit(itemLinkName)
+			l.drainLinkBuffer(true)
+			return lexText
+		case r == '[', r == '{', r == '}':
+			_ = "breakpoint"
+			// Invalid link name -- template start/close.
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemLinkName)
+			}
+			l.drainLinkBuffer(true)
+			return lexText
+		case r == ']':
+			_ = "breakpoint"
+			if strings.HasPrefix(l.input[l.pos:], "]") {
+				l.backup()
+				if l.pos > l.start {
+					l.emit(itemLinkName)
+				}
+				return lexRightLink
+			}
+		default:
+			_ = "breakpoint"
+			// absorb.
+		}
+	}
+	return lexText
 }
 
 // isEndOfLine reports whether r is an end-of-line character.
