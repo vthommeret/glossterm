@@ -103,8 +103,14 @@ Parse:
 		case itemError:
 			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
 		case itemEOF:
-			if language != nil && !language.IsEmpty() {
-				w.Languages = append(w.Languages, *language)
+			if language != nil {
+				if listItem != nil {
+					language.Descendants =
+						append(language.Descendants, listItem.TplLinks(langMap)...)
+				}
+				if !language.IsEmpty() {
+					w.Languages = append(w.Languages, *language)
+				}
 			}
 			break Parse
 		case itemHeaderStart:
