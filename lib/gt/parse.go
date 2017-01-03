@@ -147,10 +147,10 @@ Parse:
 					}
 					subSection = unknownSection
 				} else {
-					// This will exclude subsections of "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
+					// This will exclude subsections named "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
 					section = unknownSection
 
-					if sectionDepth == 3 && i.val == "Descendants" {
+					if sectionDepth >= 3 && i.val == "Descendants" {
 						subSection = descendantsSection
 					} else {
 						subSection = unknownSection
