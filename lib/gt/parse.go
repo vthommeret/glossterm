@@ -151,7 +151,7 @@ Parse:
 				listItem.Prefix = i.val
 			}
 		case itemLink:
-			if listItem != nil {
+			if listItem != nil && !strings.Contains(i.val, ":") {
 				listItem.Links = append(listItem.Links, i.val)
 			}
 		case itemText:

@@ -80,7 +80,7 @@ func TestParse(t *testing.T) {
 		{
 			"Language list",
 			"papyrus",
-			"==Latin==\n\n====Descendants====\n* English: {{l|en|papyrus}}, [[paper]]\n* French: {{l|fr|papyrus}}, {{l|fr|papier}}",
+			"==Latin==\n\n====Descendants====\n* English: {{l|en|papyrus}}, [[paper]]\n* French: {{l|fr|papyrus}}, {{l|fr|papier}}, [[Category:paper]]",
 			Word{
 				Name: "papyrus",
 				Languages: []Language{
