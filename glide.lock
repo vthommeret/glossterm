@@ -1,5 +1,5 @@
 hash: ad7341166167b85828f93a49d41c07401cfb6d70da7f0f59cdbdf922a5fc1565
-updated: 2017-01-01T23:46:31.288000045-06:00
+updated: 2017-01-02T23:58:03.488928044-06:00
 imports:
 - name: github.com/blevesearch/segment
   version: 762005e7a34fd909a84586299f1dd457371d36ee
@@ -23,7 +23,7 @@ imports:
   - voc/schema
   - writer
 - name: github.com/gogo/protobuf
-  version: 84af2615df1ba1d35cc975ba94b64ee67d6c196e
+  version: f6b4bb7b2dde1736b809b3da996ed72f278e9be9
   subpackages:
   - gogoproto
   - proto
@@ -31,7 +31,7 @@ imports:
 - name: github.com/pborman/uuid
   version: 5007efa264d92316c43112bc573e754bc889b7b1
 - name: golang.org/x/net
-  version: 8fd7f25955530b92e73e9e1932a41b522b22ccd9
+  version: 69d4b8aa71caaaa75c3dfc11211d1be495abec7c
   subpackages:
   - context
 - name: golang.org/x/sys
