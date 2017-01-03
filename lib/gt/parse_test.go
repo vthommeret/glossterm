@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/vthommeret/glossterm/lib/lang"
 	"github.com/vthommeret/glossterm/lib/tpl"
 )
 
@@ -78,7 +79,7 @@ func TestParse(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		got, err := ParseWord(tt.word, tt.text, DefaultLangMap)
+		got, err := ParseWord(tt.word, tt.text, lang.DefaultLangMap)
 		if err != nil {
 			t.Errorf("%s: gt.ParseWord(%q, %q) got error: %s.", tt.desc, tt.word, tt.text, err)
 		} else if !reflect.DeepEqual(got, tt.want) {
