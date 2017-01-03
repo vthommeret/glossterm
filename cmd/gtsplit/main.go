@@ -86,4 +86,6 @@ Loop:
 			log.Fatalf("Unable to encode %q: %s", outN, err)
 		}
 	}
+
+	fmt.Printf("\nWrote %d pages to %d files.\n", count, nBuckets)
 }
