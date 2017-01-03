@@ -36,6 +36,9 @@ func init() {
 // Based on https://en.wiktionary.org/wiki/Module:languages#Language:makeEntryName
 func (l *Lang) MakeEntryName(s string) string {
 	s = strings.TrimRight(strings.TrimLeft(s, "¿¡"), "؟?!;՛՜ ՞ ՟？！।")
+	if l.EntryNameMap == nil && l.entryNameStripMap == nil {
+		return s
+	}
 	var buffer bytes.Buffer
 	for _, r := range s {
 		if t, ok := l.EntryNameMap[r]; ok {
