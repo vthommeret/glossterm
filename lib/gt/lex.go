@@ -44,42 +44,48 @@ type itemType int
 const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF
-	itemAction        // Template action
-	itemParamDelim    // Template parameter delimiter
-	itemParamName     // Template parameter name
-	itemParamText     // Template parameter text
-	itemPipe          // Pipe symbol
-	itemHeaderStart   // Header start
-	itemHeaderEnd     // Header end
-	itemText          // Plain text
-	itemLeftTemplate  // Left template delimiter
-	itemRightTemplate // Right template delimiter
-	itemLeftLink      // Left link delimiter
-	itemRightLink     // Right link delimiter
-	itemLink          // Link text
-	itemLinkDelim     // Link delimiter
-	itemLinkName      // Link name
+	itemAction         // Template action
+	itemParamDelim     // Template parameter delimiter
+	itemParamName      // Template parameter name
+	itemParamText      // Template parameter text
+	itemPipe           // Pipe symbol
+	itemHeaderStart    // Header start
+	itemHeaderEnd      // Header end
+	itemListItemStart  // List item start
+	itemListItemPrefix // List item prefix
+	itemListItemEnd    // List item end
+	itemText           // Plain text
+	itemLeftTemplate   // Left template delimiter
+	itemRightTemplate  // Right template delimiter
+	itemLeftLink       // Left link delimiter
+	itemRightLink      // Right link delimiter
+	itemLink           // Link text
+	itemLinkDelim      // Link delimiter
+	itemLinkName       // Link name
 )
 
 // Make the types prettyprint.
 var itemName = map[itemType]string{
-	itemError:         "error",
-	itemEOF:           "EOF",
-	itemAction:        "action",
-	itemParamDelim:    "param delim",
-	itemParamName:     "param name",
-	itemParamText:     "param text",
-	itemPipe:          "pipe",
-	itemHeaderStart:   "header start",
-	itemHeaderEnd:     "header end",
-	itemText:          "text",
-	itemLeftTemplate:  "left template",
-	itemRightTemplate: "right template",
-	itemLeftLink:      "left link",
-	itemRightLink:     "right link",
-	itemLink:          "link",
-	itemLinkDelim:     "link delim",
-	itemLinkName:      "link name",
+	itemError:          "error",
+	itemEOF:            "EOF",
+	itemAction:         "action",
+	itemParamDelim:     "param delim",
+	itemParamName:      "param name",
+	itemParamText:      "param text",
+	itemPipe:           "pipe",
+	itemHeaderStart:    "header start",
+	itemHeaderEnd:      "header end",
+	itemListItemStart:  "list item start",
+	itemListItemPrefix: "list item prefix",
+	itemListItemEnd:    "list item end",
+	itemText:           "text",
+	itemLeftTemplate:   "left template",
+	itemRightTemplate:  "right template",
+	itemLeftLink:       "left link",
+	itemRightLink:      "right link",
+	itemLink:           "link",
+	itemLinkDelim:      "link delim",
+	itemLinkName:       "link name",
 }
 
 // From http://w3c.github.io/html/syntax.html#void-elements
@@ -182,8 +188,8 @@ func (l *lexer) buffer(t itemType) {
 	l.start = l.pos
 }
 
-// emitHeader passes a header item back to the client.
-func (l *lexer) emitHeader(t itemType, depth int) {
+// emitDepth passes a item with depth back to the client.
+func (l *lexer) emitDepth(t itemType, depth int) {
 	l.items <- item{t, l.start, l.input[l.start:l.pos], depth, false}
 	l.start = l.pos
 }
@@ -243,7 +249,7 @@ func (l *lexer) Print() {
 			}
 			break
 		}
-		if i.typ == itemHeaderStart || i.typ == itemHeaderEnd {
+		if i.typ == itemHeaderStart || i.typ == itemHeaderEnd || i.typ == itemListItemStart {
 			fmt.Printf("%s, %d: %q\n", i.typ, i.depth, i.val)
 		} else {
 			fmt.Printf("%s: %q\n", i.typ, i.val)
@@ -253,7 +259,7 @@ func (l *lexer) Print() {
 
 // Simplifies parsing.
 func normalizeInput(s string) string {
-	return fmt.Sprintf("\n%s\n", strings.TrimSpace(s))
+	return fmt.Sprintf("%s\n", strings.TrimSpace(s))
 }
 
 // run runs the state machine for the lexer.
@@ -317,42 +323,72 @@ func (l *lexer) drainLinkBuffer(asText bool) {
 // state functions
 
 const (
-	headerDelim   = "="
-	headers       = 6
-	leftTemplate  = "{{"
-	rightTemplate = "}}"
-	paramEqual    = "="
-	paramDelim    = "|"
-	leftLink      = "[["
-	rightLink     = "]]"
-	linkDelim     = "|"
-	spaceChars    = " \t\r\n"
+	headers            = 6
+	headerDelim        = "="
+	listItems          = 6
+	listItemStartDelim = "*"
+	listItemEndDelim   = ": "
+	leftTemplate       = "{{"
+	rightTemplate      = "}}"
+	paramEqual         = "="
+	paramDelim         = "|"
+	leftLink           = "[["
+	rightLink          = "]]"
+	linkDelim          = "|"
+	spaceChars         = " \t\r\n"
 )
 
 // lexText scans until a header or template delimiter.
 func lexText(l *lexer) stateFn {
 Loop:
 	for {
+		startOfLine := true
+		if l.pos > 0 {
+			startOfLine = (l.input[l.pos-1:l.pos] == "\n")
+		}
+
+		if startOfLine {
+			for i := headers; i > 0; i-- {
+				delim := strings.Repeat(headerDelim, i)
+				if strings.HasPrefix(l.input[l.pos:], delim) {
+					if l.pos > l.start {
+						l.emit(itemText)
+					}
+					l.ignore()
+					return lexDelim(itemHeaderStart, delim, i)
+				}
+			}
+			for i := listItems; i > 0; i-- {
+				delim := strings.Repeat(listItemStartDelim, i)
+
+				listItemStart := fmt.Sprintf("%s ", delim)
+				if strings.HasPrefix(l.input[l.pos:], listItemStart) {
+					if l.pos > l.start {
+						l.emit(itemText)
+					}
+					l.ignore()
+					return lexDelim(itemListItemStart, listItemStart, i)
+				}
+			}
+		}
+
 		for i := headers; i > 0; i-- {
 			delim := strings.Repeat(headerDelim, i)
-
-			leftHeader := "\n" + delim
-			if strings.HasPrefix(l.input[l.pos:], leftHeader) {
-				if l.pos > l.start {
-					l.emit(itemText)
-				}
-				l.ignore()
-				return lexHeaderDelim(itemHeaderStart, leftHeader, i)
-			}
-
 			rightHeader := delim + "\n"
 			if strings.HasPrefix(l.input[l.pos:], rightHeader) {
 				if l.pos > l.start {
 					l.emit(itemText)
 				}
 				l.ignore()
-				return lexHeaderDelim(itemHeaderEnd, rightHeader, i)
+				return lexDelim(itemHeaderEnd, rightHeader, i)
 			}
+		}
+		if strings.HasPrefix(l.input[l.pos:], listItemEndDelim) {
+			if l.pos > l.start {
+				l.emit(itemListItemPrefix)
+			}
+			l.pos += Pos(len(listItemEndDelim))
+			l.emit(itemListItemEnd)
 		}
 		if strings.HasPrefix(l.input[l.pos:], leftTemplate) {
 			if l.pos > l.start {
@@ -372,6 +408,7 @@ Loop:
 			}
 			return lexLeftLink
 		}
+
 		switch r := l.next(); {
 		case r == eof:
 			l.drainTplBuffer()
@@ -393,10 +430,10 @@ Loop:
 	return nil
 }
 
-func lexHeaderDelim(it itemType, delim string, depth int) stateFn {
+func lexDelim(it itemType, delim string, depth int) stateFn {
 	return func(l *lexer) stateFn {
 		l.pos += Pos(len(delim))
-		l.emitHeader(it, depth)
+		l.emitDepth(it, depth)
 		return lexText
 	}
 }

@@ -65,6 +65,11 @@ const (
 	descendantsSection
 )
 
+type ListItem struct {
+	Prefix string
+	Links  []string
+}
+
 func Parse(p Page, langMap map[string]bool) (Word, error) {
 	return ParseWord(p.Title, p.Text, langMap)
 }
@@ -84,6 +89,7 @@ func ParseWord(name, text string, langMap map[string]bool) (Word, error) {
 	var language *Language
 	var template *tpl.Template
 	var namedParam *tpl.Parameter
+	var listItem *ListItem
 
 	var depth int
 
@@ -119,13 +125,37 @@ Parse:
 				inSectionHeader = true
 				sectionDepth = i.depth - 1
 			}
+			if language != nil && listItem != nil {
+				language.Descendants =
+					append(language.Descendants, listItem.TplLinks(langMap)...)
+			}
+			listItem = nil
 		case itemHeaderEnd:
 			if i.depth == 2 {
 				inLanguageHeader = false
 			} else if i.depth > 2 {
 				inSectionHeader = false
 			}
+		case itemListItemStart:
+			if subSection == descendantsSection {
+				listItem = &ListItem{}
+			}
+		case itemListItemPrefix:
+			if listItem != nil {
+				listItem.Prefix = i.val
+			}
+		case itemLink:
+			if listItem != nil {
+				listItem.Links = append(listItem.Links, i.val)
+			}
 		case itemText:
+			// TODO: More intelligently handle whitespace in lexer. Emit newline
+			// tokens and ignore otherwise unimportant whitespace.
+			if language != nil && listItem != nil {
+				language.Descendants =
+					append(language.Descendants, listItem.TplLinks(langMap)...)
+			}
+			listItem = nil
 			if inLanguageHeader {
 				if l, ok := lang.CanonicalLangs[i.val]; ok {
 					if _, ok := langMap[l.Code]; ok {
@@ -255,4 +285,21 @@ Parse:
 	}
 
 	return w, nil
+}
+
+func (li *ListItem) TplLinks(langMap map[string]bool) (ls []tpl.Link) {
+	for _, l := range li.Links {
+		var c string
+		if l, ok := lang.CanonicalLangs[li.Prefix]; ok {
+			if _, ok := langMap[l.Code]; ok {
+				c = l.Code
+			} else {
+				continue
+			}
+		} else {
+			continue
+		}
+		ls = append(ls, tpl.Link{Lang: c, Word: l})
+	}
+	return ls
 }
