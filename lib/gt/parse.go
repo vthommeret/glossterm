@@ -155,7 +155,7 @@ Parse:
 				listItem.Prefix = i.val
 			}
 		case itemLink:
-			if listItem != nil && !strings.Contains(i.val, ":") {
+			if listItem != nil {
 				listItem.Links = append(listItem.Links, i.val)
 			}
 		case itemText:
@@ -309,7 +309,12 @@ Parse:
 }
 
 func (li *ListItem) TplLinks(langMap map[string]bool) (ls []tpl.Link) {
-	for _, l := range li.Links {
+	for _, link := range li.Links {
+		if strings.Contains(link, ":") {
+			continue
+		}
+		parts := strings.Split(link, "#")
+		link = parts[0]
 		var c string
 		if l, ok := lang.CanonicalLangs[li.Prefix]; ok {
 			if _, ok := langMap[l.Code]; ok {
@@ -320,7 +325,7 @@ func (li *ListItem) TplLinks(langMap map[string]bool) (ls []tpl.Link) {
 		} else {
 			continue
 		}
-		ls = append(ls, tpl.Link{Lang: c, Word: l})
+		ls = append(ls, tpl.Link{Lang: c, Word: link})
 	}
 	return ls
 }
