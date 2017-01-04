@@ -1,13 +1,9 @@
 package main
 
 import (
-	"compress/gzip"
-	"encoding/gob"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/blevesearch/segment"
@@ -28,8 +24,6 @@ func init() {
 }
 
 func main() {
-	outputCompressed := fmt.Sprintf("%s.gz", output)
-
 	// Get words.
 	words, err := gt.GetWords(input)
 	if err != nil {
@@ -53,29 +47,9 @@ func main() {
 		count++
 	}
 
-	// Gob writer
-	f, err := os.Create(output)
+	err = gt.WriteGob(output, r)
 	if err != nil {
-		log.Fatalf("Unable to create %q: %s", output, err)
-	}
-	defer f.Close()
-
-	// Gzip writer
-	g, err := os.Create(outputCompressed)
-	if err != nil {
-		log.Fatalf("Unable to create %q: %s", outputCompressed, err)
-	}
-	gw := gzip.NewWriter(g)
-	defer gw.Close()
-
-	// Multi writer
-	w := io.MultiWriter(f, gw)
-
-	// Write gob and gzip simultaneously.
-	e := gob.NewEncoder(w)
-	err = e.Encode(r)
-	if err != nil {
-		log.Fatalf("Unable to encode radix tree: %s", err)
+		log.Fatalf("Unable to write and compress %s: %s", output, err)
 	}
 
 	fmt.Printf("Wrote %d words (%d terms)\n", count, termCount)

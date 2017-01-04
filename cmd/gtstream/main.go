@@ -1,8 +1,6 @@
 package main
 
 import (
-	"compress/gzip"
-	"encoding/gob"
 	"flag"
 	"fmt"
 	"io"
@@ -28,8 +26,6 @@ func init() {
 }
 
 func main() {
-	outputCompressedFile := fmt.Sprintf("%s.gz", outputFile)
-
 	files, err := gt.GetSplitFiles(inputFile)
 	if err != nil {
 		log.Fatalf("Unable to get split files: %s", err)
@@ -90,31 +86,8 @@ Loop:
 
 	fmt.Printf("\n%d total words\n", count)
 
-	// Gob writer
-	out, err := os.Create(outputFile)
+	err = gt.WriteGob(outputFile, words)
 	if err != nil {
-		log.Fatalf("Unable to create %q file: %s", outputFile, err)
+		log.Fatalf("Unable to write and compress %s: %s", outputFile, err)
 	}
-	defer out.Close()
-
-	// Gzip writer
-	outCompressed, err := os.Create(outputCompressedFile)
-	if err != nil {
-		log.Fatalf("Unable to create %q file: %s", outputCompressedFile, out)
-	}
-	defer outCompressed.Close()
-	gw := gzip.NewWriter(outCompressed)
-	defer gw.Close()
-
-	// Multi writer
-	w := io.MultiWriter(out, gw)
-
-	// Write gob and gzip simultaneously.
-	enc := gob.NewEncoder(w)
-	err = enc.Encode(words)
-	if err != nil {
-		log.Fatalf("Unable to encode words: %s", err)
-	}
-
-	fmt.Printf("Wrote %q and %q\n", outputFile, outputCompressedFile)
 }
