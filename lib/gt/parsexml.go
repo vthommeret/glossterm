@@ -26,6 +26,7 @@ type Error struct {
 }
 
 const count = 1
+const etymTree = "Template:etymtree/"
 
 // ParseXMLPage returns page for cmd/gtpage.
 func ParseXMLPage(r io.ReadCloser, title string, page chan<- Page, errors chan<- Error, done chan<- io.ReadCloser) {
@@ -73,7 +74,7 @@ Parse:
 				var p Page
 				d.DecodeElement(&p, &se)
 				// Exclude namespaced pages.
-				if strings.Contains(p.Title, ":") {
+				if strings.Contains(p.Title, ":") && !strings.HasPrefix(p.Title, etymTree) {
 					continue Parse
 				}
 				pages <- p
@@ -84,8 +85,8 @@ Parse:
 	done <- r
 }
 
-// ParseXMLWords returns words for cmd/gtstream.
-func ParseXMLWords(r io.ReadCloser, words chan<- Word, errors chan<- Error, done chan<- io.ReadCloser) {
+// ParseXMLWords returns words and descendants for cmd/gtstream.
+func ParseXMLWords(r io.ReadCloser, words chan<- Word, descendants chan<- Descendants, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 
 Parse:
@@ -102,14 +103,23 @@ Parse:
 			if se.Name.Local == "page" {
 				var p Page
 				d.DecodeElement(&p, &se)
-				w, err := Parse(p, lang.DefaultLangMap)
-				if err != nil {
-					errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
-					continue Parse
-				} else if w.IsEmpty() {
-					continue Parse
+				if strings.HasPrefix(p.Title, etymTree) {
+					ds, err := ParseDescendants(p, lang.DefaultLangMap)
+					if err != nil {
+						errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
+						continue Parse
+					}
+					descendants <- *ds
+				} else {
+					w, err := Parse(p, lang.DefaultLangMap)
+					if err != nil {
+						errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
+						continue Parse
+					} else if w.IsEmpty() {
+						continue Parse
+					}
+					words <- w
 				}
-				words <- w
 			}
 		}
 	}

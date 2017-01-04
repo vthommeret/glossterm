@@ -14,9 +14,10 @@ type Word struct {
 }
 
 type Language struct {
-	Code        string
-	Etymology   Etymology
-	Descendants []tpl.Link
+	Code            string
+	Etymology       Etymology
+	Descendants     []tpl.Link
+	DescendantTrees []tpl.EtymTree
 }
 
 type Etymology struct {
@@ -34,6 +35,9 @@ func (w *Word) IsEmpty() bool {
 
 func (l *Language) IsEmpty() bool {
 	if l.Descendants != nil {
+		return false
+	}
+	if l.DescendantTrees != nil {
 		return false
 	}
 	if l.Etymology.Mentions != nil {
@@ -261,6 +265,17 @@ Parse:
 						if _, ok := langMap[link.Lang]; ok {
 							language.Descendants =
 								append(language.Descendants, link)
+						}
+					}
+				case "etymtree":
+					etymTree := template.ToEtymTree()
+					if _, ok := langMap[etymTree.Lang]; ok {
+						if _, ok := langMap[etymTree.RootLang]; ok || etymTree.RootLang == "" {
+							if etymTree.Word == "" {
+								etymTree.Word = w.Name
+							}
+							language.DescendantTrees =
+								append(language.DescendantTrees, etymTree)
 						}
 					}
 				}
