@@ -22,7 +22,7 @@ func init() {
 // Filter out diacritics for search.
 func Normalize(w string) string {
 	s, _, _ := transform.String(normalizer, w)
-	return s
+	return strings.ToLower(s)
 }
 
 func GetSplitFiles(pathTemplate string) (files []*os.File, err error) {

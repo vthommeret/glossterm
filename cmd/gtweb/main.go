@@ -98,29 +98,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query().Get("query")
+	q := strings.TrimSpace(r.URL.Query().Get("query"))
 
-	if word, ok := words[q]; ok {
-		from, descendants := latinDescendants(word)
-		if from != nil && descendants != nil {
-			w.Header().Set("Content-Type", "application/json")
-			b, err := json.Marshal(map[string]interface{}{
-				"type":        "descendants",
-				"from":        from,
-				"descendants": descendants,
-			})
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Write(b)
-			return
-		}
+	if word, ok := words[q]; ok && maybeWriteDescendants(w, word) {
+		return
 	}
 
 	rs := index.FindWordsWithPrefix(strings.ToLower(q), max)
 	if len(rs) > max {
 		rs = rs[:max]
+	} else if len(rs) == 1 {
+		eq := gt.Normalize(string(rs[0])) == gt.Normalize(q)
+		if eq && maybeWriteDescendants(w, words[string(rs[0])]) {
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -133,6 +124,25 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(b)
+}
+
+func maybeWriteDescendants(w http.ResponseWriter, word *gt.Word) bool {
+	from, descendants := latinDescendants(word)
+	if from != nil && descendants != nil {
+		w.Header().Set("Content-Type", "application/json")
+		b, err := json.Marshal(map[string]interface{}{
+			"type":        "descendants",
+			"from":        from,
+			"descendants": descendants,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return true
+		}
+		w.Write(b)
+		return true
+	}
+	return false
 }
 
 type From struct {
