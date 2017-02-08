@@ -21,9 +21,3 @@ Wiktionary dump, put it in `data/` and run the following commands.
 
 Once you've run those commands, you can run `gtweb` which will launch
 the web app.
-
-## Mobile
-
-In order to generate a Mobile framework for iOS/Android, you can run `gomobile bind -target=ios github.com/vthommeret/glossterm/lib/mobile`.
-
-More information is available here: https://github.com/golang/go/wiki/Mobile
