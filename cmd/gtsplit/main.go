@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/bzip2"
 	"encoding/xml"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/vthommeret/glossterm/lib/gt"
 )
@@ -17,7 +19,7 @@ import (
 const total = 5500000 // approximate
 const step = total / 100
 
-const defaultInputFile = "data/enwiktionary-latest-pages-articles.xml"
+const defaultInputFile = "data/enwiktionary-latest-pages-articles.xml.bz2"
 const defaultOutputFile = "cmd/gtsplit/pages.xml"
 
 var inputFile string
@@ -29,11 +31,19 @@ func init() {
 	flag.Parse()
 }
 
+type bzipXml struct {
+	io.Reader
+	io.Closer
+}
+
 func main() {
+	start := time.Now()
+
 	in, err := os.Open(inputFile)
 	if err != nil {
 		log.Fatalf("Unable to open %q input file: %s", inputFile, err)
 	}
+	bx := bzipXml{bzip2.NewReader(in), in}
 
 	nBuckets := runtime.NumCPU()
 	buckets := make([][]gt.Page, nBuckets)
@@ -42,7 +52,7 @@ func main() {
 	errorsCh := make(chan gt.Error, 10)
 	doneCh := make(chan io.ReadCloser)
 
-	go gt.ParseXMLPages(in, pagesCh, errorsCh, doneCh)
+	go gt.ParseXMLPages(bx, pagesCh, errorsCh, doneCh)
 
 	i := 0
 	count := 0
@@ -87,5 +97,7 @@ Loop:
 		}
 	}
 
-	fmt.Printf("\nWrote %d pages to %d files.\n", count, nBuckets)
+	elapsed := time.Since(start)
+
+	fmt.Printf("\nWrote %d pages to %d files in %s.\n", count, nBuckets, elapsed)
 }

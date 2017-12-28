@@ -1,9 +1,11 @@
 # glossterm
 
-## Commands
+## Pipeline
 
 In order to generate files for the web app, you need to grab an English
 Wiktionary dump, put it in `data/` and run the following commands.
+
+1. `gtdump`    downloads Wiktionary dump to en.xml.bz2.
 
 1. `gtsplit`   splits Wiktionary dump into N files so it can be parsed
                in parallel. N is set to the current number of cores.
@@ -21,3 +23,13 @@ Wiktionary dump, put it in `data/` and run the following commands.
 
 Once you've run those commands, you can run `gtweb` which will launch
 the web app.
+
+## Dependencies
+
+### Updating dependencies
+
+`go install`
+
+### Adding dependencies
+
+`glide get github.com/dustin/go-humanize`
