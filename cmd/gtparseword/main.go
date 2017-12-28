@@ -41,7 +41,7 @@ func main() {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := gt.Parse(p, lang.DefaultLangMap)
+	w, err := gt.ParseWord(p, lang.DefaultLangMap)
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}

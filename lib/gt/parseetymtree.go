@@ -12,7 +12,8 @@ type Descendants struct {
 	Links []tpl.Link
 }
 
-func ParseDescendants(p Page, langMap map[string]bool) (*Descendants, error) {
+// Parses a given etymology tree (e.g. https://en.wiktionary.org/wiki/Template:etymtree/la/germanus)
+func ParseEtymTree(p Page, langMap map[string]bool) (*Descendants, error) {
 	descendants := Descendants{
 		Word: p.Title,
 	}

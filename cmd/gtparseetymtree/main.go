@@ -43,7 +43,7 @@ func main() {
 		log.Fatalf("Unable to unmarshal JSON: %s", err)
 	}
 
-	w, err := gt.ParseDescendants(p, lang.DefaultLangMap)
+	w, err := gt.ParseEtymTree(p, lang.DefaultLangMap)
 	if err != nil {
 		log.Fatalf("Unable to parse word: %s", err)
 	}

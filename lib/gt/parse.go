@@ -74,11 +74,11 @@ type ListItem struct {
 	Links  []string
 }
 
-func Parse(p Page, langMap map[string]bool) (Word, error) {
-	return ParseWord(p.Title, p.Text, langMap)
-}
+// Parses a given word (e.g. https://en.wiktionary.org/wiki/hombre).
+func ParseWord(p Page, langMap map[string]bool) (Word, error) {
+	name := p.Title
+	text := p.Text
 
-func ParseWord(name, text string, langMap map[string]bool) (Word, error) {
 	w := Word{
 		Name: name,
 	}

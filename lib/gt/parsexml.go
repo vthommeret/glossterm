@@ -104,14 +104,14 @@ Parse:
 				var p Page
 				d.DecodeElement(&p, &se)
 				if strings.HasPrefix(p.Title, etymTree) {
-					ds, err := ParseDescendants(p, lang.DefaultLangMap)
+					ds, err := ParseEtymTree(p, lang.DefaultLangMap)
 					if err != nil {
 						errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
 						continue Parse
 					}
 					descendants <- *ds
 				} else {
-					w, err := Parse(p, lang.DefaultLangMap)
+					w, err := ParseWord(p, lang.DefaultLangMap)
 					if err != nil {
 						errors <- Error{fmt.Sprintf("unable to parse %q word: %s", p.Title, err), false}
 						continue Parse

@@ -43,9 +43,9 @@ the web app.
     parses a single XML word.
     Example: `gtpage horno | gtparseword`
 
-1. `gtparsedescendants <word.xml>`
-    parses the descendants for a single descendants XML page.
-    Example: `gtpage Template:etymtree/la/germanus | gtparsedescendants`
+1. `gtparseetymtree <word.xml>`
+    parses a single etymtree XML page.
+    Example: `gtpage Template:etymtree/la/germanus | gtparseetymtree`
 
 1. `gtdescend <word>`
     shows the descendants from any words mentioned for a given word.
