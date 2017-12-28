@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	// Return file info for stdin.
 	stat, err := os.Stdin.Stat()
 	if err != nil {
 		log.Fatalf("Unable to stat stdin.")
@@ -17,6 +18,7 @@ func main() {
 
 	var f io.Reader
 
+	// Set f to stdin or specified file.
 	if (stat.Mode() & os.ModeCharDevice) == 0 {
 		f = os.Stdin
 	} else {
