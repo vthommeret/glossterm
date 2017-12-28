@@ -1,4 +1,5 @@
 *.xml
+*.xml.bz2
 *.txt
 *.gob
 *.lex
