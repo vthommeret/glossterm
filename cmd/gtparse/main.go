@@ -1,55 +1,107 @@
 package main
 
 import (
-	"encoding/json"
-	"encoding/xml"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 
 	"github.com/vthommeret/glossterm/lib/gt"
-	"github.com/vthommeret/glossterm/lib/lang"
 )
 
+const defaultInputFile = "cmd/gtsplit/pages.xml"
+const defaultOutputFile = "data/words.gob"
+const defaultDescendantsOutputFile = "data/descendants.gob"
+
+const total = 200000 // approximate
+const step = total / 100
+
+var inputFile string
+var outputFile string
+var descendantsOutputFile string
+
+func init() {
+	flag.StringVar(&inputFile, "i", defaultInputFile, "Input file (xml format)")
+	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (gob format)")
+	flag.StringVar(&descendantsOutputFile, "do", defaultDescendantsOutputFile, "Descendants output file (gob format)")
+	flag.Parse()
+}
+
 func main() {
-	stat, err := os.Stdin.Stat()
+	files, err := gt.GetSplitFiles(inputFile)
 	if err != nil {
-		log.Fatalf("Unable to stat stdin.")
+		log.Fatalf("Unable to get split files: %s", err)
+	}
+	nBuckets := len(files)
+
+	if nBuckets == 0 {
+		log.Fatalf("No split files found for %q.", inputFile)
 	}
 
-	var f io.Reader
+	// Whether stderr is redirected to a file.
+	stat, err := os.Stderr.Stat()
+	if err != nil {
+		log.Fatalf("Unable to stat stderr.")
+	}
+	errFile := (stat.Mode() & os.ModeCharDevice) == 0
 
-	if (stat.Mode() & os.ModeCharDevice) == 0 {
-		f = os.Stdin
-	} else {
-		if len(os.Args) < 2 {
-			log.Fatalf("Must specify file.")
+	wordsCh := make(chan gt.Word, 10)
+	descendantsCh := make(chan gt.Descendants, 10)
+	errorsCh := make(chan gt.Error, 10)
+	doneCh := make(chan io.ReadCloser)
+
+	count := 0
+	descendantsCount := 0
+	completed := 0
+
+	for _, f := range files {
+		go gt.ParseXMLWords(f, wordsCh, descendantsCh, errorsCh, doneCh)
+	}
+
+	words := make(map[string]*gt.Word)
+	descendants := make(map[string]gt.Descendants)
+
+Loop:
+	for {
+		select {
+		case e := <-errorsCh:
+			if e.Fatal {
+				log.Fatalf("\nError parsing words: %s", e.Message)
+			} else {
+				var prefix string
+				if !errFile {
+					prefix = "\n"
+				}
+				fmt.Fprintf(os.Stderr, "%sError parsing words: %s\n", prefix, e.Message)
+			}
+		case f := <-doneCh:
+			f.Close()
+			completed++
+			if completed == nBuckets {
+				break Loop
+			}
+		case w := <-wordsCh:
+			words[w.Name] = &w
+			count++
+			if count == 1 || count%step == 0 {
+				fmt.Printf("\r%.1f%% (%d)", 100*float32(count)/total, count)
+			}
+		case d := <-descendantsCh:
+			descendants[d.Word] = d
+			descendantsCount++
 		}
-		fp := os.Args[1]
-		f, err = os.Open(fp)
-		if err != nil {
-			log.Fatalf("Unable to open fp: %s", err)
-		}
 	}
 
-	d := xml.NewDecoder(f)
+	fmt.Printf("\n%d total words, %d descendant trees\n", count, descendantsCount)
 
-	var p gt.Page
-	err = d.Decode(&p)
+	err = gt.WriteGob(outputFile, words)
 	if err != nil {
-		log.Fatalf("Unable to unmarshal JSON: %s", err)
+		log.Fatalf("Unable to write and compress %s: %s", outputFile, err)
 	}
 
-	w, err := gt.Parse(p, lang.DefaultLangMap)
+	err = gt.WriteGob(descendantsOutputFile, descendants)
 	if err != nil {
-		log.Fatalf("Unable to parse word: %s", err)
+		log.Fatalf("Unable to write and compress %s: %s", descendantsOutputFile, err)
 	}
-
-	b, err := json.MarshalIndent(w, "", "  ")
-	if err != nil {
-		log.Fatalf("Unable to marshal JSON: %s", err)
-	}
-
-	fmt.Println(string(b))
 }

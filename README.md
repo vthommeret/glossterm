@@ -10,7 +10,7 @@ Wiktionary dump, put it in `data/` and run the following commands.
 1. `gtsplit`   splits Wiktionary dump into N files so it can be parsed
                in parallel. N is set to the current number of cores.
 
-1. `gtstream`  parses split files into words.gob and descendants.gob.
+1. `gtparse`   parses split files into words.gob and descendants.gob.
 
 1. `gtresolve` reads words.gob and looks up DescendantTrees references
                in descendants.gob, and inlines them.
@@ -31,7 +31,7 @@ the web app.
 
 1. `gtlex <word.xml>`              lexes a single XML page for a given word.
 
-1. `gtparse <word.xml>`            parses a single XML page for a given word.
+1. `gtparseword <word.xml>`        parses a single XML page for a given word.
 
 1. `gtparsedescendants <word.xml>` parses the descendants for a single
                                    XML page for a given word.
