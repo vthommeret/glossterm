@@ -1,5 +1,5 @@
-hash: ad7341166167b85828f93a49d41c07401cfb6d70da7f0f59cdbdf922a5fc1565
-updated: 2017-01-02T23:58:03.488928044-06:00
+hash: 3acfe37364c79885ead635d84f5dcac521c30bed1e646ef245353d2b3e8920c1
+updated: 2017-12-28T16:44:50.622259+01:00
 imports:
 - name: github.com/blevesearch/segment
   version: 762005e7a34fd909a84586299f1dd457371d36ee
@@ -22,6 +22,8 @@ imports:
   - voc
   - voc/schema
   - writer
+- name: github.com/dustin/go-humanize
+  version: bb3d318650d48840a39aa21a027c6630e198e626
 - name: github.com/gogo/protobuf
   version: f6b4bb7b2dde1736b809b3da996ed72f278e9be9
   subpackages:
