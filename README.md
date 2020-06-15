@@ -5,6 +5,9 @@
 In order to generate files for the web app, you need to grab an English
 Wiktionary dump, put it in `data/` and run the following commands.
 
+You can run the commands by doing e.g. `go run cmd/gtdump/main.go` or running `make`
+to install globally available commands that can be run as e.g. `gtdump`.
+
 1. `gtdump`
    downloads Wiktionary dump to en.xml.bz2.
 
@@ -55,13 +58,3 @@ the web app.
 1. `gtread`           reads words.gob.
 
 1. `gtsearch <query>` searches the index for a given word.
-
-## Dependencies
-
-### Updating dependencies
-
-`go install`
-
-### Adding dependencies
-
-`glide get github.com/dustin/go-humanize`
