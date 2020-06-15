@@ -18,7 +18,7 @@ import (
 const total = 6400000 // approximate
 const step = total / 100
 
-const defaultInputFile = "data/enwiktionary-latest-pages-articles.xml.bz2"
+const defaultInputFile = "data/en.xml.bz2"
 const defaultOutputFile = "cmd/gtsplit/pages.xml"
 
 var inputFile string
