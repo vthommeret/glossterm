@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/tar"
 	"compress/gzip"
 	"flag"
 	"fmt"
@@ -25,12 +26,12 @@ var output string
 
 func init() {
 	flag.StringVar(&input, "i", defaultInput, "Input file (gob format)")
-	flag.StringVar(&output, "o", defaultOutput, "Output file (boltdb format)")
+	flag.StringVar(&output, "o", defaultOutput, "Output folder (boltdb format)")
 	flag.Parse()
 }
 
 func main() {
-	outputCompressed := fmt.Sprintf("%s.gz", output)
+	outputCompressed := fmt.Sprintf("%s.tar.gz", output)
 
 	// Get words.
 	words, err := gt.GetWords(input)
@@ -38,21 +39,23 @@ func main() {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
 
-	tf, err := ioutil.TempFile("", "words-graph")
+	tmpDir, err := ioutil.TempDir("", "words-graph")
 	if err != nil {
-		log.Fatalf("Unable to create temp file: %s", err)
+		log.Fatalf("Unable to create temp directory: %s", err)
 	}
-	tfName := tf.Name()
-	defer os.Remove(tfName)
+	defer os.RemoveAll(tmpDir)
 
 	// Initialize the database
-	graph.InitQuadStore("bolt", tfName, nil)
+	err = graph.InitQuadStore("bolt", tmpDir, nil)
+	if err != nil {
+		log.Fatalf("Unable to init quad store: %s", err)
+	}
 	graph.IgnoreDuplicates = true
 
 	// Open and use the database
-	store, err := cayley.NewGraph("bolt", tfName, nil)
+	store, err := cayley.NewGraph("bolt", tmpDir, nil)
 	if err != nil {
-		log.Fatalf("Unable to open %q output: %s", tfName, err)
+		log.Fatalf("Unable to open %q output: %s", tmpDir, err)
 	}
 
 	// Prepare quads
@@ -135,7 +138,7 @@ func main() {
 
 	// Move temp db to output.
 	log.Printf("Moving tmp database to data dir.")
-	err = os.Rename(tfName, output)
+	err = os.Rename(tmpDir, output)
 	if err != nil {
 		log.Fatalf("Unable to move tmp database to output: %s", err)
 	}
@@ -156,10 +159,14 @@ func main() {
 	gw := gzip.NewWriter(g)
 	defer gw.Close()
 
+	// Tar writer
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
 	// Gzip db
-	_, err = io.Copy(gw, db)
+	_, err = io.Copy(tw, db)
 	if err != nil {
-		log.Fatalf("Unable to gzip db: %s", err)
+		log.Fatalf("Unable to tar and gzip db: %s", err)
 	}
 
 	log.Printf("Read %d words, wrote %d quads.", count, quadCount)
