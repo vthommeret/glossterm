@@ -3,8 +3,7 @@ package gt
 import (
 	"fmt"
 	"strings"
-
-	"github.com/vthommeret/glossterm/lib/tpl"
+	"vthommeret/glossterm/lib/tpl"
 )
 
 type Descendants struct {

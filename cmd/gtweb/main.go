@@ -10,11 +10,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"vthommeret/glossterm/lib/gt"
+	"vthommeret/glossterm/lib/radix"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/quad"
-	"github.com/vthommeret/glossterm/lib/gt"
-	"github.com/vthommeret/glossterm/lib/radix"
 )
 
 const defaultWordsPath = "data/words.gob"

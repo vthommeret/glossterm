@@ -3,9 +3,8 @@ package gt
 import (
 	"reflect"
 	"testing"
-
-	"github.com/vthommeret/glossterm/lib/lang"
-	"github.com/vthommeret/glossterm/lib/tpl"
+	"vthommeret/glossterm/lib/lang"
+	"vthommeret/glossterm/lib/tpl"
 )
 
 func TestParse(t *testing.T) {

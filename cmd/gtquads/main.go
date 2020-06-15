@@ -8,13 +8,13 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"vthommeret/glossterm/lib/gt"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/quad"
-	"github.com/vthommeret/glossterm/lib/gt"
 
-	_ "github.com/cayleygraph/cayley/graph/bolt"
+	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 )
 
 const defaultInput = "data/words.gob"

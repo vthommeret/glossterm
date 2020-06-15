@@ -12,8 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/vthommeret/glossterm/lib/gt"
+	"vthommeret/glossterm/lib/gt"
 )
 
 const total = 5500000 // approximate
