@@ -1,7 +1,0 @@
-package: github.com/vthommeret/glossterm
-import:
-- package: github.com/blevesearch/segment
-  version: 762005e7a34fd909a84586299f1dd457371d36ee
-- package: github.com/cayleygraph/cayley
-  version: f2d4f4900a6a2deb2d4cb0ff05664ae477533042
-- package: github.com/dustin/go-humanize
