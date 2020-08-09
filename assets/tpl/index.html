@@ -96,7 +96,6 @@ var resultsTpl = _.template(
 );
 
 var definitionTpl = _.template(
-  '<em>from <%- from.Word %> (<%- from.Lang %>)</em><br>' +
   '<% _.each(descendants, function(d) { %>' +
     '<%- d.Word %> (<%- d.Lang %>)<br>' +
   '<% }); %>'

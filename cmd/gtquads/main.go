@@ -1,21 +1,23 @@
 package main
 
 import (
-	"compress/gzip"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"vthommeret/glossterm/lib/gt"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/quad"
-	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/walle/targz"
 
-	_ "github.com/cayleygraph/cayley/graph/bolt"
+	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 )
+
+const inputLang = "fr"
+const parentLang = "la"
 
 const defaultInput = "data/words.gob"
 const defaultOutput = "data/graph.db"
@@ -25,12 +27,12 @@ var output string
 
 func init() {
 	flag.StringVar(&input, "i", defaultInput, "Input file (gob format)")
-	flag.StringVar(&output, "o", defaultOutput, "Output file (boltdb format)")
+	flag.StringVar(&output, "o", defaultOutput, "Output folder (boltdb format)")
 	flag.Parse()
 }
 
 func main() {
-	outputCompressed := fmt.Sprintf("%s.gz", output)
+	outputCompressed := fmt.Sprintf("%s.tar.gz", output)
 
 	// Get words.
 	words, err := gt.GetWords(input)
@@ -38,21 +40,23 @@ func main() {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
 
-	tf, err := ioutil.TempFile("", "words-graph")
+	tmpDir, err := ioutil.TempDir("", "words-graph")
 	if err != nil {
-		log.Fatalf("Unable to create temp file: %s", err)
+		log.Fatalf("Unable to create temp directory: %s", err)
 	}
-	tfName := tf.Name()
-	defer os.Remove(tfName)
+	defer os.RemoveAll(tmpDir)
 
 	// Initialize the database
-	graph.InitQuadStore("bolt", tfName, nil)
+	err = graph.InitQuadStore("bolt", tmpDir, nil)
+	if err != nil {
+		log.Fatalf("Unable to init quad store: %s", err)
+	}
 	graph.IgnoreDuplicates = true
 
 	// Open and use the database
-	store, err := cayley.NewGraph("bolt", tfName, nil)
+	store, err := cayley.NewGraph("bolt", tmpDir, nil)
 	if err != nil {
-		log.Fatalf("Unable to open %q output: %s", tfName, err)
+		log.Fatalf("Unable to open %q output: %s", tmpDir, err)
 	}
 
 	// Prepare quads
@@ -64,9 +68,9 @@ func main() {
 
 	for _, w := range words {
 		for _, l := range w.Languages {
-			if l.Code == "es" {
+			if l.Code == inputLang {
 				for _, b := range l.Etymology.Borrows {
-					if b.FromLang == "la" {
+					if b.FromLang == parentLang {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"borrowing-from",
@@ -77,7 +81,7 @@ func main() {
 					}
 				}
 				for _, d := range l.Etymology.Derived {
-					if d.FromLang == "la" {
+					if d.FromLang == parentLang {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"derived-from",
@@ -88,7 +92,7 @@ func main() {
 					}
 				}
 				for _, i := range l.Etymology.Inherited {
-					if i.FromLang == "la" {
+					if i.FromLang == parentLang {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"inherited-from",
@@ -99,7 +103,7 @@ func main() {
 					}
 				}
 				for _, m := range l.Etymology.Mentions {
-					if m.Lang == "la" {
+					if m.Lang == parentLang {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"mentions",
@@ -109,9 +113,34 @@ func main() {
 						quadCount++
 					}
 				}
-			} else if l.Code == "la" {
+			} else if l.Code == parentLang {
+				for _, s := range l.Etymology.Suffixes {
+					if s.Lang != inputLang {
+						quads = append(quads, quad.Make(
+							fmt.Sprintf("%s/%s", l.Code, w.Name),
+							"suffix",
+							fmt.Sprintf("%s/%s", s.Lang, s.Root),
+							nil,
+						))
+						quadCount++
+					}
+				}
+
+				// Map both Links and Descendants to "descendant" for graph search
+
+				for _, ln := range l.Links {
+					if ln.Lang != inputLang {
+						quads = append(quads, quad.Make(
+							fmt.Sprintf("%s/%s", l.Code, w.Name),
+							"descendant",
+							fmt.Sprintf("%s/%s", ln.Lang, ln.Word),
+							nil,
+						))
+						quadCount++
+					}
+				}
 				for _, d := range l.Descendants {
-					if d.Lang != "es" {
+					if d.Lang != inputLang {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"descendant",
@@ -121,6 +150,7 @@ func main() {
 						quadCount++
 					}
 				}
+
 			}
 		}
 		count++
@@ -135,31 +165,14 @@ func main() {
 
 	// Move temp db to output.
 	log.Printf("Moving tmp database to data dir.")
-	err = os.Rename(tfName, output)
+	err = os.Rename(tmpDir, output)
 	if err != nil {
 		log.Fatalf("Unable to move tmp database to output: %s", err)
 	}
 
-	// Open db file
-	db, err := os.Open(output)
+	err = targz.Compress(output, outputCompressed)
 	if err != nil {
-		log.Fatalf("Unable to open db file: %s", err)
-	}
-	defer db.Close()
-
-	// Gzip writer
-	log.Printf("Gzipping database.")
-	g, err := os.Create(outputCompressed)
-	if err != nil {
-		log.Fatalf("Unable to create %q: %s", outputCompressed, err)
-	}
-	gw := gzip.NewWriter(g)
-	defer gw.Close()
-
-	// Gzip db
-	_, err = io.Copy(gw, db)
-	if err != nil {
-		log.Fatalf("Unable to gzip db: %s", err)
+		log.Fatalf("Unable to tar and gzip db: %s", err)
 	}
 
 	log.Printf("Read %d words, wrote %d quads.", count, quadCount)

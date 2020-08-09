@@ -4,9 +4,9 @@ import "reflect"
 
 // https://en.wiktionary.org/wiki/Template:suffix
 type Suffix struct {
+	Lang   string `names:"lang", lang:"true"`
 	Root   string
 	Suffix string
-	Lang   string `names:"lang", lang:"true"`
 }
 
 func (tpl *Template) ToSuffix() Suffix {

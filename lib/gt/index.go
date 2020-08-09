@@ -9,8 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/vthommeret/glossterm/lib/radix"
+	"vthommeret/glossterm/lib/radix"
 )
 
 // GetIndex returns radix tree either from path or compressed path.

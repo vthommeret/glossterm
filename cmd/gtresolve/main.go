@@ -4,8 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-
-	"github.com/vthommeret/glossterm/lib/gt"
+	"vthommeret/glossterm/lib/gt"
 )
 
 const defaultInput = "data/words.gob"
@@ -47,8 +46,8 @@ func main() {
 				for _, t := range l.DescendantTrees {
 					n := t.ToEntryName()
 					if ds, ok := descendants[n]; ok {
-						words[i].Languages[j].Descendants =
-							append(l.Descendants, ds.Links...)
+						words[i].Languages[j].Links =
+							append(l.Links, ds.Links...)
 						resolved++
 					}
 				}

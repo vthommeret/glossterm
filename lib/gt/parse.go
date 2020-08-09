@@ -3,9 +3,8 @@ package gt
 import (
 	"fmt"
 	"strings"
-
-	"github.com/vthommeret/glossterm/lib/lang"
-	"github.com/vthommeret/glossterm/lib/tpl"
+	"vthommeret/glossterm/lib/lang"
+	"vthommeret/glossterm/lib/tpl"
 )
 
 type Word struct {
@@ -16,7 +15,8 @@ type Word struct {
 type Language struct {
 	Code            string
 	Etymology       Etymology
-	Descendants     []tpl.Link
+	Links           []tpl.Link
+	Descendants     []tpl.Descendant
 	DescendantTrees []tpl.EtymTree
 }
 
@@ -34,6 +34,9 @@ func (w *Word) IsEmpty() bool {
 }
 
 func (l *Language) IsEmpty() bool {
+	if l.Links != nil {
+		return false
+	}
 	if l.Descendants != nil {
 		return false
 	}
@@ -109,8 +112,8 @@ Parse:
 		case itemEOF:
 			if language != nil {
 				if listItem != nil {
-					language.Descendants =
-						append(language.Descendants, listItem.TplLinks(langMap)...)
+					language.Links =
+						append(language.Links, listItem.TplLinks(langMap)...)
 				}
 				if !language.IsEmpty() {
 					w.Languages = append(w.Languages, *language)
@@ -136,8 +139,8 @@ Parse:
 				sectionDepth = i.depth - 1
 			}
 			if language != nil && listItem != nil {
-				language.Descendants =
-					append(language.Descendants, listItem.TplLinks(langMap)...)
+				language.Links =
+					append(language.Links, listItem.TplLinks(langMap)...)
 			}
 			listItem = nil
 		case itemHeaderEnd:
@@ -162,8 +165,8 @@ Parse:
 			// TODO: More intelligently handle whitespace in lexer. Emit newline
 			// tokens and ignore otherwise unimportant whitespace.
 			if language != nil && listItem != nil && strings.Contains(i.val, "\n") {
-				language.Descendants =
-					append(language.Descendants, listItem.TplLinks(langMap)...)
+				language.Links =
+					append(language.Links, listItem.TplLinks(langMap)...)
 				listItem = nil
 			}
 			if inLanguageHeader {
@@ -259,12 +262,20 @@ Parse:
 				}
 			} else if subSection == descendantsSection {
 				switch template.Action {
+				case "desc", "descendant":
+					if language != nil {
+						desc := template.ToDescendant()
+						if _, ok := langMap[desc.Lang]; ok {
+							language.Descendants =
+								append(language.Descendants, desc)
+						}
+					}
 				case "l", "link":
 					if language != nil {
 						link := template.ToLink()
 						if _, ok := langMap[link.Lang]; ok {
-							language.Descendants =
-								append(language.Descendants, link)
+							language.Links =
+								append(language.Links, link)
 						}
 					}
 				case "etymtree":

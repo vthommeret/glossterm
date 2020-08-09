@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/vthommeret/glossterm/lib/gt"
+	"vthommeret/glossterm/lib/gt"
 )
+
+const sourceLang = "fr"
 
 const defaultInput = "data/graph.db"
 
@@ -24,26 +23,16 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("Must specify word.")
 	}
-	w := quad.String(fmt.Sprintf("es/%s", os.Args[1]))
+	w := os.Args[1]
 
-	graph, err := gt.GetGraph(input)
+	g, err := gt.GetGraph(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q graph: %s", input, err)
 	}
 
-	s := cayley.StartPath(graph, w)
-	bs := s.Out(quad.String("borrowing-from"))
-	ds := s.Out(quad.String("derived-from"))
-	is := s.Out(quad.String("inherited-from"))
-	ms := s.Out(quad.String("mentions"))
-	p := bs.Or(ds).Or(is).Or(ms).Out(quad.String("descendant"))
+	ds := gt.GetDescendants(g, sourceLang, w)
 
-	rs, err := gt.QueryGraph(graph, p)
-	if err != nil {
-		log.Fatalf("Unable to execute query: %s", err)
-	}
-
-	for _, r := range rs {
-		fmt.Printf("%s\n", r)
+	for _, d := range ds {
+		fmt.Printf("%s\n", d)
 	}
 }

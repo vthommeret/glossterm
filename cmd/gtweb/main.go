@@ -10,12 +10,13 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"vthommeret/glossterm/lib/gt"
+	"vthommeret/glossterm/lib/radix"
 
 	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/vthommeret/glossterm/lib/gt"
-	"github.com/vthommeret/glossterm/lib/radix"
 )
+
+const sourceLang = "fr"
 
 const defaultWordsPath = "data/words.gob"
 const defaultIndexPath = "data/index.gob"
@@ -127,12 +128,11 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func maybeWriteDescendants(w http.ResponseWriter, word *gt.Word) bool {
-	from, descendants := latinDescendants(word)
-	if from != nil && descendants != nil {
+	descendants := latinDescendants(word)
+	if descendants != nil {
 		w.Header().Set("Content-Type", "application/json")
 		b, err := json.Marshal(map[string]interface{}{
 			"type":        "descendants",
-			"from":        from,
 			"descendants": descendants,
 		})
 		if err != nil {
@@ -145,47 +145,15 @@ func maybeWriteDescendants(w http.ResponseWriter, word *gt.Word) bool {
 	return false
 }
 
-type From struct {
-	Lang string
-	Word string
-}
-
 type Descendant struct {
 	Lang string
 	Word string
 }
 
-// Latin descendants of Spanish words.
-func latinDescendants(w *gt.Word) (*From, []Descendant) {
-	n := quad.String(fmt.Sprintf("es/%s", w.Name))
-
-	// Find mentions/derivations
-	s := cayley.StartPath(graph, n)
-	bs := s.Out(quad.String("borrowing-from"))
-	ds := s.Out(quad.String("derived-from"))
-	is := s.Out(quad.String("inherited-from"))
-	ms := s.Out(quad.String("mentions"))
-	p := bs.Or(ds).Or(is).Or(ms)
-	rs, err := gt.QueryGraph(graph, p.Has("descendant"))
-	if err != nil || len(rs) == 0 {
-		return nil, nil
-	}
-
-	// Return the first mention
-	lang, word := idParts(rs[0])
-	from := From{
-		Lang: lang,
-		Word: word,
-	}
-
-	// Find descendants
-	p = p.Out(quad.String("descendant"))
-	rs, err = gt.QueryGraph(graph, p)
-	if err != nil {
-		return nil, nil
-	}
-
-	return &from, toDescendants(rs)
+// Latin descendants of French words.
+func latinDescendants(w *gt.Word) []Descendant {
+	ds := gt.GetDescendants(graph, sourceLang, w.Name)
+	return toDescendants(ds)
 }
 
 func toDescendants(is []interface{}) (ds []Descendant) {

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"vthommeret/glossterm/lib/gt"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/quad"
-	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 type Graph struct {

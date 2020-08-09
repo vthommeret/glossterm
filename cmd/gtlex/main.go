@@ -5,8 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
-
-	"github.com/vthommeret/glossterm/lib/gt"
+	"vthommeret/glossterm/lib/gt"
 )
 
 func main() {

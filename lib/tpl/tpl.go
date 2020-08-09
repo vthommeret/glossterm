@@ -3,8 +3,7 @@ package tpl
 import (
 	"reflect"
 	"strings"
-
-	"github.com/vthommeret/glossterm/lib/lang"
+	"vthommeret/glossterm/lib/lang"
 )
 
 type Template struct {
