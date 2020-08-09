@@ -12,7 +12,7 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/quad"
 
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
+	_ "github.com/cayleygraph/cayley/graph/bolt"
 	"github.com/cayleygraph/cayley/graph/path"
 )
 

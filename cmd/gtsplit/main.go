@@ -12,13 +12,14 @@ import (
 	"runtime"
 	"strings"
 	"time"
-	"vthommeret/glossterm/lib/gt"
+
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
-const total = 6400000 // approximate
+const total = 5500000 // approximate
 const step = total / 100
 
-const defaultInputFile = "data/en.xml.bz2"
+const defaultInputFile = "data/enwiktionary-latest-pages-articles.xml.bz2"
 const defaultOutputFile = "cmd/gtsplit/pages.xml"
 
 var inputFile string

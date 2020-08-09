@@ -7,8 +7,9 @@ import (
 	"io"
 	"log"
 	"os"
-	"vthommeret/glossterm/lib/gt"
-	"vthommeret/glossterm/lib/lang"
+
+	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/vthommeret/glossterm/lib/lang"
 )
 
 func main() {

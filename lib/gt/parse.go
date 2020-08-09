@@ -3,8 +3,9 @@ package gt
 import (
 	"fmt"
 	"strings"
-	"vthommeret/glossterm/lib/lang"
-	"vthommeret/glossterm/lib/tpl"
+
+	"github.com/vthommeret/glossterm/lib/lang"
+	"github.com/vthommeret/glossterm/lib/tpl"
 )
 
 type Word struct {

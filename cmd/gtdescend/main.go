@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"vthommeret/glossterm/lib/gt"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/quad"
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultInput = "data/graph.db"
