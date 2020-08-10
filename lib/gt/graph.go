@@ -48,12 +48,22 @@ func GetGraph(path string) (*cayley.Handle, error) {
 }
 
 // QueryGraph queries graph.
-func QueryGraph(g *cayley.Handle, p *path.Path) (rs []interface{}, err error) {
+func QueryGraph(g *cayley.Handle, p *path.Path) (rs []string, ts []string, err error) {
 	err = p.Iterate(nil).EachValue(nil, func(v quad.Value) {
-		rs = append(rs, quad.NativeOf(v))
+		rs = append(rs, quad.NativeOf(v).(string))
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return rs, nil
+
+	err = p.Iterate(nil).TagValues(nil, func(m map[string]quad.Value) {
+		if v, ok := m["parent"]; ok {
+			ts = append(ts, quad.NativeOf(v).(string))
+		}
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rs, ts, nil
 }

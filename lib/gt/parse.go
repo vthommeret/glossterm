@@ -22,6 +22,7 @@ type Language struct {
 }
 
 type Etymology struct {
+	Cognates  []tpl.Cognate
 	Mentions  []tpl.Mention
 	Borrows   []tpl.Borrow
 	Derived   []tpl.Derived
@@ -42,6 +43,9 @@ func (l *Language) IsEmpty() bool {
 		return false
 	}
 	if l.DescendantTrees != nil {
+		return false
+	}
+	if l.Etymology.Cognates != nil {
 		return false
 	}
 	if l.Etymology.Mentions != nil {
@@ -217,6 +221,12 @@ Parse:
 			if section == etymologySection {
 				if language != nil {
 					switch template.Action {
+					case "cog", "cognate":
+						cognate := template.ToCognate()
+						if _, ok := langMap[cognate.Lang]; ok {
+							language.Etymology.Cognates =
+								append(language.Etymology.Cognates, cognate)
+						}
 					case "m", "mention":
 						mention := template.ToMention()
 						if _, ok := langMap[mention.Lang]; ok {

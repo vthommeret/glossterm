@@ -78,6 +78,7 @@ func main() {
 							fmt.Sprintf("%s/%s", b.FromLang, b.FromWord),
 							nil,
 						))
+						fmt.Printf("%s/%s borrowing-from %s/%s\n", l.Code, w.Name, b.FromLang, b.FromWord)
 						quadCount++
 					}
 				}
@@ -89,6 +90,7 @@ func main() {
 							fmt.Sprintf("%s/%s", d.FromLang, d.FromWord),
 							nil,
 						))
+						fmt.Printf("%s/%s derived-from %s/%s\n", l.Code, w.Name, d.FromLang, d.FromWord)
 						quadCount++
 					}
 				}
@@ -100,6 +102,7 @@ func main() {
 							fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
 							nil,
 						))
+						fmt.Printf("%s/%s inherited-from %s/%s\n", l.Code, w.Name, i.FromLang, i.FromWord)
 						quadCount++
 					}
 				}
@@ -111,10 +114,24 @@ func main() {
 							fmt.Sprintf("%s/%s", m.Lang, m.Word),
 							nil,
 						))
+						fmt.Printf("%s/%s mentions %s/%s\n", l.Code, w.Name, m.Lang, m.Word)
 						quadCount++
 					}
 				}
 			} else if l.Code == parentLang {
+				for _, c := range l.Etymology.Cognates {
+					if c.Lang != inputLang {
+						quads = append(quads, quad.Make(
+							fmt.Sprintf("%s/%s", l.Code, w.Name),
+							"cognate",
+							fmt.Sprintf("%s/%s", c.Lang, c.Word),
+							nil,
+						))
+						fmt.Printf("%s/%s cognate %s/%s\n", l.Code, w.Name, c.Lang, c.Word)
+						quadCount++
+					}
+				}
+
 				for _, s := range l.Etymology.Suffixes {
 					if s.Lang != inputLang {
 						quads = append(quads, quad.Make(
@@ -123,6 +140,7 @@ func main() {
 							fmt.Sprintf("%s/%s", s.Lang, s.Root),
 							nil,
 						))
+						fmt.Printf("%s/%s suffix %s/%s\n", l.Code, w.Name, s.Lang, s.Root)
 						quadCount++
 					}
 				}
@@ -137,6 +155,7 @@ func main() {
 							fmt.Sprintf("%s/%s", ln.Lang, ln.Word),
 							nil,
 						))
+						fmt.Printf("%s/%s descendant (link) %s/%s\n", l.Code, w.Name, ln.Lang, ln.Word)
 						quadCount++
 					}
 				}
@@ -148,6 +167,7 @@ func main() {
 							fmt.Sprintf("%s/%s", d.Lang, d.Word),
 							nil,
 						))
+						fmt.Printf("%s/%s descendant %s/%s\n", l.Code, w.Name, d.Lang, d.Word)
 						quadCount++
 					}
 				}
@@ -156,6 +176,8 @@ func main() {
 		}
 		count++
 	}
+
+	return
 
 	// Add quads
 	log.Printf("Storing quads.")

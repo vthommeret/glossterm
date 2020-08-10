@@ -34,6 +34,6 @@ func main() {
 	ds := gt.GetDescendants(g, sourceLang, w)
 
 	for _, d := range ds {
-		fmt.Printf("%s\n", d)
+		fmt.Printf("%s (%s)\n", d.Word, d.From)
 	}
 }

@@ -9,28 +9,48 @@ import (
 	"github.com/cayleygraph/quad"
 )
 
-func GetDescendants(graph *cayley.Handle, lang string, word string) []interface{} {
+type Descendant struct {
+	Word string
+	From string
+}
+
+func GetDescendants(graph *cayley.Handle, lang string, word string) []Descendant {
 	w := quad.String(fmt.Sprintf("%s/%s", lang, word))
 
 	s := cayley.StartPath(graph, w)
-	ps := findParents(s)
-	p := findParents(ps).Out(quad.String("descendant")).
-		Or(ps.Out(quad.String("descendant")))
+	ps := findParents(s).Tag("parent")
 
-	rs, err := QueryGraph(graph, p)
+	// Find children of parent or second-degree parent
+	p := findChildren(findParents(ps).Tag("parent")).
+		Or(findChildren(ps))
+
+	rs, ts, err := QueryGraph(graph, p)
 	if err != nil {
 		log.Fatalf("Unable to execute query: %s", err)
 	}
 
-	return rs
+	ds := []Descendant{}
+
+	for i, r := range rs {
+		ds = append(ds, Descendant{Word: r, From: ts[i]})
+	}
+
+	return ds
 }
 
 func findParents(p *path.Path) *path.Path {
-	return p.Out(quad.String("borrowing-from")).
+	return p.
+		Out("borrowing-from").
 		Or(p.Out("derived-from")).
 		Or(p.Out("inherited-from")).
 		Or(p.Out("mentions")).
 		Or(p.Out("suffix"))
+}
+
+func findChildren(p *path.Path) *path.Path {
+	return p.
+		Out("descendant").
+		Or(p.Out("cognate"))
 }
 
 /*
