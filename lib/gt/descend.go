@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/cayleygraph/cayley"
+	"github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/quad"
 )
 
@@ -24,7 +25,7 @@ func GetDescendants(graph *cayley.Handle, lang string, word string) []interface{
 	return rs
 }
 
-func findParents(p *cayley.Path) *cayley.Path {
+func findParents(p *path.Path) *path.Path {
 	return p.Out(quad.String("borrowing-from")).
 		Or(p.Out("derived-from")).
 		Or(p.Out("inherited-from")).
