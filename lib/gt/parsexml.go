@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"vthommeret/glossterm/lib/lang"
+
+	"github.com/vthommeret/glossterm/lib/lang"
 )
 
 type Redirect struct {

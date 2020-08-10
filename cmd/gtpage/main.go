@@ -7,7 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"vthommeret/glossterm/lib/gt"
+
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultInput = "cmd/gtsplit/pages.xml"

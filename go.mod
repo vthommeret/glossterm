@@ -1,4 +1,4 @@
-module vthommeret/glossterm
+module github.com/vthommeret/glossterm
 
 go 1.14
 

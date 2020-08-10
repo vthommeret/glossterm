@@ -5,7 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"vthommeret/glossterm/lib/gt"
+
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultInput = "data/words.gob"

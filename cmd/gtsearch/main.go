@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"vthommeret/glossterm/lib/gt"
+
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const defaultIndexPath = "data/index.gob"

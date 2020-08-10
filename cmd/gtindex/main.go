@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"vthommeret/glossterm/lib/gt"
-	"vthommeret/glossterm/lib/radix"
+
+	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/vthommeret/glossterm/lib/radix"
 
 	"github.com/blevesearch/segment"
 )

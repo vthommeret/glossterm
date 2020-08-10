@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"vthommeret/glossterm/lib/gt"
+
+	"github.com/vthommeret/glossterm/lib/gt"
 )
 
 const sourceLang = "fr"
