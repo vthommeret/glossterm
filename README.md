@@ -1,4 +1,4 @@
-# glossterm
+# glossterm 0.5
 
 ## Pipeline
 
