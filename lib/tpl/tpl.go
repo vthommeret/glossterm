@@ -26,7 +26,10 @@ func (tpl *Template) toConcrete(t reflect.Type, v reflect.Value) {
 	n := len(tpl.Parameters)
 	for i := 0; i < t.NumField(); i++ {
 		if n > i {
-			v.Field(i).SetString(tpl.Parameters[i])
+			str := tpl.Parameters[i]
+			if str != "" {
+				v.Field(i).SetString(str)
+			}
 		}
 	}
 
@@ -43,12 +46,15 @@ func (tpl *Template) toConcrete(t reflect.Type, v reflect.Value) {
 		tf := t.Field(i)
 		vf := v.Field(i)
 		for _, p := range strings.Split(tf.Tag.Get("names"), ",") {
-			if val, ok := paramMap[p]; ok {
+			if val, ok := paramMap[p]; ok && val != "" {
 				vf.SetString(val)
 			}
 		}
 		if tf.Tag.Get("lang") != "" {
-			vf.SetString(lang.ToParent(vf.String()))
+			str := vf.String()
+			if str != "" {
+				vf.SetString(lang.ToParent(str))
+			}
 		}
 	}
 }

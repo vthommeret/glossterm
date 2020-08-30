@@ -4,8 +4,8 @@ import "reflect"
 
 // https://en.wiktionary.org/wiki/Template:descendant
 type Descendant struct {
-	Lang string `lang:"true"`
-	Word string
+	Lang string `lang:"true" firestore:"lang,omitempty"`
+	Word string `firestore:"word,omitempty"`
 }
 
 func (tpl *Template) ToDescendant() Descendant {

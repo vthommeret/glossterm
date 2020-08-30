@@ -41,13 +41,14 @@ func main() {
 	// Resolve descendant trees.
 	count := 0
 	resolved := 0
-	for i, w := range words {
-		for j, l := range w.Languages {
+	for _, w := range words {
+		langs := w.Languages
+		for _, l := range *langs {
 			if l.DescendantTrees != nil {
 				for _, t := range l.DescendantTrees {
 					n := t.ToEntryName()
 					if ds, ok := descendants[n]; ok {
-						words[i].Languages[j].Links =
+						l.Links =
 							append(l.Links, ds.Links...)
 						resolved++
 					}

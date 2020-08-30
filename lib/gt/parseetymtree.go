@@ -39,7 +39,7 @@ Parse:
 					append(descendants.Links, listItem.TplLinks(langMap)...)
 			}
 			break Parse
-		case itemListItemStart:
+		case itemUnorderedListItemStart:
 			listItem = &ListItem{}
 		case itemListItemPrefix:
 			if listItem != nil {

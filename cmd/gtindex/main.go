@@ -5,15 +5,24 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
+	"cloud.google.com/go/firestore"
 	"github.com/vthommeret/glossterm/lib/gt"
-	"github.com/vthommeret/glossterm/lib/radix"
 
 	"github.com/blevesearch/segment"
+
+	"golang.org/x/net/context"
+
+	firebase "firebase.google.com/go"
+
+	"google.golang.org/api/option"
 )
 
 const defaultInput = "data/words.gob"
 const defaultOutput = "data/index.gob"
+
+const progress = 100
 
 var input string
 var output string
@@ -25,35 +34,81 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
+	opt := option.WithCredentialsFile("./cognate-service-account.json")
+	app, err := firebase.NewApp(ctx, nil, opt)
+	if err != nil {
+		log.Fatalf("Unable to initialize Firebase app: %v", err)
+	}
+
+	store, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalf("Unable to initialize Firestore: %v", err)
+	}
+	defer store.Close()
+
 	// Get words.
 	words, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
 
-	// Populate radix tree.
 	count := 0
 	termCount := 0
-	r := radix.NewTree()
+	//r := radix.NewTree()
+
+	// Create wait group
+	var wg sync.WaitGroup
+
+	max := 5
+
+	//completed := 0
+
 	for _, w := range words {
 		ts, err := getTerms(w.Name)
 		if err != nil {
 			log.Fatalf("Unable to get %q terms: %s", w.Name, err)
 		}
-		id := radix.EntryID(w.Name)
-		for t := range ts {
-			r.Insert(t, id)
-			termCount++
-		}
+
+		fmt.Printf("%s\n", w.Name)
+
+		/*
+			wg.Add(1)
+			go addWord(ctx, store, w, ts, &wg, &completed)
+		*/
+
 		count++
+		termCount += len(ts)
+
+		if count == max {
+			break
+		}
 	}
 
-	err = gt.WriteGob(output, r)
-	if err != nil {
-		log.Fatalf("Unable to write and compress %s: %s", output, err)
-	}
+	wg.Wait()
 
 	fmt.Printf("Wrote %d words (%d terms)\n", count, termCount)
+}
+
+func addWord(ctx context.Context, store *firestore.Client, w *gt.Word, ts map[string]bool, wg *sync.WaitGroup, completed *int) {
+	wordsRef := store.Collection("words")
+
+	_, _, err := wordsRef.Add(ctx, map[string]interface{}{
+		"word":      w.Name,
+		"terms":     ts,
+		"languages": w.Languages,
+	})
+	if err != nil {
+		log.Fatalf("Failed adding word: %v", err)
+	}
+
+	*completed++
+
+	if *completed%progress == 0 {
+		fmt.Printf("\rAdded %d words", *completed)
+	}
+
+	wg.Done()
 }
 
 // Returns list of unique and normalized terms for a given word.

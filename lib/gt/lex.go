@@ -44,14 +44,22 @@ type itemType int
 const (
 	itemError itemType = iota // error occurred; value is text of error
 	itemEOF
-	itemAction         // Template action
-	itemParamDelim     // Template parameter delimiter
-	itemParamName      // Template parameter name
-	itemParamText      // Template parameter text
-	itemPipe           // Pipe symbol
-	itemHeaderStart    // Header start
-	itemHeaderEnd      // Header end
-	itemListItemStart  // List item start
+	itemAction      // Template action
+	itemParamDelim  // Template parameter delimiter
+	itemParamName   // Template parameter name
+	itemParamText   // Template parameter text
+	itemPipe        // Pipe symbol
+	itemHeaderStart // Header start
+	itemHeaderEnd   // Header end
+
+	itemUnorderedListItemStart   // Unordered list item start
+	itemUnorderedDefinitionStart // Unordered definition start
+	itemUnorderedOrderedStart    // Unordered ordered start
+
+	itemOrderedListItemStart   // Ordered list item start
+	itemOrderedDefinitionStart // Ordered definition start
+	itemOrderedUnorderedStart  // Ordered unordered start
+
 	itemListItemPrefix // List item prefix
 	itemListItemEnd    // List item end
 	itemText           // Plain text
@@ -66,16 +74,24 @@ const (
 
 // Make the types prettyprint.
 var itemName = map[itemType]string{
-	itemError:          "error",
-	itemEOF:            "EOF",
-	itemAction:         "action",
-	itemParamDelim:     "param delim",
-	itemParamName:      "param name",
-	itemParamText:      "param text",
-	itemPipe:           "pipe",
-	itemHeaderStart:    "header start",
-	itemHeaderEnd:      "header end",
-	itemListItemStart:  "list item start",
+	itemError:       "error",
+	itemEOF:         "EOF",
+	itemAction:      "action",
+	itemParamDelim:  "param delim",
+	itemParamName:   "param name",
+	itemParamText:   "param text",
+	itemPipe:        "pipe",
+	itemHeaderStart: "header start",
+	itemHeaderEnd:   "header end",
+
+	itemUnorderedListItemStart:   "unordered list item start",
+	itemUnorderedDefinitionStart: "unordered definition start",
+	itemUnorderedOrderedStart:    "unordered ordered start",
+
+	itemOrderedListItemStart:   "ordered list item start",
+	itemOrderedDefinitionStart: "ordered definition start",
+	itemOrderedUnorderedStart:  "ordered unordered start",
+
 	itemListItemPrefix: "list item prefix",
 	itemListItemEnd:    "list item end",
 	itemText:           "text",
@@ -130,13 +146,14 @@ type stateFn func(*lexer) stateFn
 
 // lexer holds the state of the scanner.
 type lexer struct {
-	input    string    // the string being scanned
-	state    stateFn   // the next lexing function to enter
-	pos      Pos       // current position in the input
-	start    Pos       // start position of this item
-	width    Pos       // width of last rune read from input
-	items    chan item // channel of scanned items
-	buffered buffer    // buffer of items before they're emitted
+	input      string    // the string being scanned
+	state      stateFn   // the next lexing function to enter
+	pos        Pos       // current position in the input
+	start      Pos       // start position of this item
+	width      Pos       // width of last rune read from input
+	items      chan item // channel of scanned items
+	buffered   buffer    // buffer of items before they're emitted
+	inListItem bool
 }
 
 // next returns the next rune in the input.
@@ -222,6 +239,43 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 	return nil
 }
 
+func (l *lexer) lexListItem(startDelim string, startItem itemType, endItem itemType, definitionItem itemType, alternateDelim string, alternateItem itemType) (bool, stateFn) {
+	for i := listItems; i > 0; i-- {
+		delim := strings.Repeat(startDelim, i)
+
+		// Definition list item (#:)
+		defnPrefix := fmt.Sprintf("%s%s", delim, definitionStart)
+		if strings.HasPrefix(l.input[l.pos:], defnPrefix) {
+			return true, lexDelim(definitionItem, defnPrefix, i)
+		}
+
+		// For ordered list within unordered list, or visa versa...
+		// From "nonhospital":
+		// # An [[institution]] that is not a hospital.
+		// #* '''1988''', LaVonne Straub, ‎Norman Walzer, ''Financing Rural Health Care'' (page 97)
+		alternatePrefix := fmt.Sprintf("%s%s", delim, alternateDelim)
+		if strings.HasPrefix(l.input[l.pos:], alternatePrefix) {
+			return true, lexDelim(alternateItem, alternatePrefix, i)
+		}
+
+		// Regular list item
+		prefix := fmt.Sprintf("%s", delim)
+		if strings.HasPrefix(l.input[l.pos:], prefix) {
+			if l.inListItem {
+				l.emit(endItem)
+			} else {
+				l.inListItem = true
+			}
+			if l.pos > l.start {
+				l.emit(itemText)
+			}
+			l.ignore()
+			return true, lexDelim(startItem, prefix, i)
+		}
+	}
+	return false, nil
+}
+
 // NextItem returns the next item from the input.
 // Called by the parser, not in the lexing goroutine.
 func (l *lexer) NextItem() item {
@@ -249,7 +303,7 @@ func (l *lexer) Print() {
 			}
 			break
 		}
-		if i.typ == itemHeaderStart || i.typ == itemHeaderEnd || i.typ == itemListItemStart {
+		if i.typ == itemHeaderStart || i.typ == itemHeaderEnd || i.typ == itemUnorderedListItemStart || i.typ == itemOrderedListItemStart || i.typ == itemOrderedDefinitionStart || i.typ == itemUnorderedDefinitionStart {
 			fmt.Printf("%s, %d: %q\n", i.typ, i.depth, i.val)
 		} else {
 			fmt.Printf("%s: %q\n", i.typ, i.val)
@@ -318,19 +372,21 @@ func (l *lexer) drainLinkBuffer(asText bool) {
 // state functions
 
 const (
-	headers            = 6
-	headerDelim        = "="
-	listItems          = 6
-	listItemStartDelim = "*"
-	listItemEndDelim   = ": "
-	leftTemplate       = "{{"
-	rightTemplate      = "}}"
-	paramEqual         = "="
-	paramDelim         = "|"
-	leftLink           = "[["
-	rightLink          = "]]"
-	linkDelim          = "|"
-	spaceChars         = " \t\r\n"
+	headers                = 6
+	headerDelim            = "="
+	listItems              = 6
+	orderedListItemStart   = "#"
+	unorderedListItemStart = "*"
+	definitionStart        = ":"
+	listItemEndDelim       = ": "
+	leftTemplate           = "{{"
+	rightTemplate          = "}}"
+	paramEqual             = "="
+	paramDelim             = "|"
+	leftLink               = "[["
+	rightLink              = "]]"
+	linkDelim              = "|"
+	spaceChars             = " \t\r\n"
 )
 
 // lexText scans until a header or template delimiter.
@@ -343,9 +399,14 @@ Loop:
 		}
 
 		if startOfLine {
+			// Headers
 			for i := headers; i > 0; i-- {
 				delim := strings.Repeat(headerDelim, i)
 				if strings.HasPrefix(l.input[l.pos:], delim) {
+					if l.inListItem {
+						l.inListItem = false
+						l.emit(itemListItemEnd)
+					}
 					if l.pos > l.start {
 						l.emit(itemText)
 					}
@@ -353,17 +414,13 @@ Loop:
 					return lexDelim(itemHeaderStart, delim, i)
 				}
 			}
-			for i := listItems; i > 0; i-- {
-				delim := strings.Repeat(listItemStartDelim, i)
-
-				listItemStart := fmt.Sprintf("%s ", delim)
-				if strings.HasPrefix(l.input[l.pos:], listItemStart) {
-					if l.pos > l.start {
-						l.emit(itemText)
-					}
-					l.ignore()
-					return lexDelim(itemListItemStart, listItemStart, i)
-				}
+			// Unordered list items
+			if lexed, nextFn := l.lexListItem(unorderedListItemStart, itemUnorderedListItemStart, itemListItemEnd, itemUnorderedDefinitionStart, orderedListItemStart, itemOrderedUnorderedStart); lexed {
+				return nextFn
+			}
+			// Ordered list items
+			if lexed, nextFn := l.lexListItem(orderedListItemStart, itemOrderedListItemStart, itemListItemEnd, itemOrderedDefinitionStart, unorderedListItemStart, itemUnorderedOrderedStart); lexed {
+				return nextFn
 			}
 		}
 
@@ -377,13 +434,15 @@ Loop:
 				return lexDelim(itemHeaderEnd, delim, i)
 			}
 		}
-		if strings.HasPrefix(l.input[l.pos:], listItemEndDelim) {
-			if l.pos > l.start {
-				l.emit(itemListItemPrefix)
+		/*
+			if strings.HasPrefix(l.input[l.pos:], listItemEndDelim) {
+				if l.pos > l.start {
+					l.emit(itemListItemPrefix)
+				}
+				l.pos += Pos(len(listItemEndDelim))
+				l.emit(itemListItemEnd)
 			}
-			l.pos += Pos(len(listItemEndDelim))
-			l.emit(itemListItemEnd)
-		}
+		*/
 		if strings.HasPrefix(l.input[l.pos:], leftTemplate) {
 			if l.pos > l.start {
 				l.emit(itemText)
@@ -406,6 +465,10 @@ Loop:
 		switch r := l.next(); {
 		case r == eof:
 			l.drainTplBuffer()
+			if l.inListItem {
+				l.emit(itemListItemEnd)
+				l.inListItem = false
+			}
 			break Loop
 		case isEndOfLine(r):
 			if l.pos > l.start {
