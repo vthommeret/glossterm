@@ -7,3 +7,4 @@
 *.bleve
 *.db
 .DS_Store
+cognate-service-account.json
