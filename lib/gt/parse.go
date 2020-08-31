@@ -3,6 +3,7 @@ package gt
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/vthommeret/glossterm/lib/lang"
 	"github.com/vthommeret/glossterm/lib/tpl"
@@ -11,6 +12,7 @@ import (
 type Word struct {
 	Name      string               `json:"name"`
 	Languages *map[string]Language `json:"languages"`
+	Indexed   *time.Time           `json:"indexed,omitempty"`
 }
 
 type Language struct {

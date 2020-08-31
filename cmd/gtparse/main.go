@@ -14,7 +14,7 @@ const defaultInputFile = "cmd/gtsplit/pages.xml"
 const defaultOutputFile = "data/words.gob"
 const defaultDescendantsOutputFile = "data/descendants.gob"
 
-const total = 200000 // approximate
+const total = 590000 // approximate
 const step = total / 100
 
 var inputFile string
@@ -85,7 +85,7 @@ Loop:
 			words[w.Name] = &w
 			count++
 			if count == 1 || count%step == 0 {
-				fmt.Printf("\r%.1f%% (%d)", 100*float32(count)/total, count)
+				fmt.Printf("\r~%.1f%% (%d)", 100*float32(count)/total, count)
 			}
 		case d := <-descendantsCh:
 			descendants[d.Word] = d

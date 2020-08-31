@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"cloud.google.com/go/firestore"
 	"github.com/vthommeret/glossterm/lib/gt"
@@ -20,9 +21,10 @@ import (
 )
 
 const defaultInput = "data/words.gob"
-const defaultOutput = "data/index.gob"
+const defaultOutput = "data/words.gob"
 
-const progress = 100
+//const max = 25
+const batch = 1000
 
 var input string
 var output string
@@ -55,58 +57,95 @@ func main() {
 
 	count := 0
 	termCount := 0
-	//r := radix.NewTree()
+	skipped := 0
 
 	// Create wait group
 	var wg sync.WaitGroup
 
-	max := 5
-
-	//completed := 0
-
 	for _, w := range words {
+		// Not supported by Firestore and probably not something people
+		// are searching for
+		if strings.Contains(w.Name, "/") {
+			continue
+		}
+		if w.Languages == nil {
+			continue
+		}
+		if w.Indexed != nil {
+			skipped++
+			continue
+		}
+
+		// Require definitions
+		hasDefinitions := false
+		for _, l := range *w.Languages {
+			if l.Definitions != nil {
+				hasDefinitions = true
+				break
+			}
+		}
+		if !hasDefinitions {
+			continue
+		}
+
 		ts, err := getTerms(w.Name)
 		if err != nil {
 			log.Fatalf("Unable to get %q terms: %s", w.Name, err)
 		}
 
-		fmt.Printf("%s\n", w.Name)
-
 		/*
-			wg.Add(1)
-			go addWord(ctx, store, w, ts, &wg, &completed)
+			b, err := json.MarshalIndent(w, "", "  ")
+			if err != nil {
+				log.Fatalf("Unable to marshal JSON: %s", err)
+			}
+			fmt.Printf("%s\n", string(b))
 		*/
+
+		wg.Add(1)
+		go addWord(ctx, store, words, w, ts, &wg)
 
 		count++
 		termCount += len(ts)
 
-		if count == max {
-			break
+		if count%batch == 0 {
+			commitWords(&wg, words, count, termCount, skipped)
 		}
+
+		/*
+			if count == max {
+				break
+			}
+		*/
 	}
 
-	wg.Wait()
-
-	fmt.Printf("Wrote %d words (%d terms)\n", count, termCount)
+	if count%batch != 0 {
+		commitWords(&wg, words, count, termCount, skipped)
+	}
 }
 
-func addWord(ctx context.Context, store *firestore.Client, w *gt.Word, ts map[string]bool, wg *sync.WaitGroup, completed *int) {
+func commitWords(wg *sync.WaitGroup, words map[string]*gt.Word, count, termCount, skipped int) {
+	wg.Wait()
+	err := gt.WriteGob(output, words, false)
+	if err != nil {
+		log.Fatalf("Unable to write and compressed words %s: %s", output, err)
+	}
+	fmt.Printf("\rIndexed %d words (%d terms); %d already indexed", count, termCount, skipped)
+}
+
+func addWord(ctx context.Context, store *firestore.Client, words map[string]*gt.Word, w *gt.Word, ts map[string]bool, wg *sync.WaitGroup) {
 	wordsRef := store.Collection("words")
 
-	_, _, err := wordsRef.Add(ctx, map[string]interface{}{
-		"word":      w.Name,
+	_, err := wordsRef.Doc(w.Name).Set(ctx, map[string]interface{}{
+		"name":      w.Name,
 		"terms":     ts,
 		"languages": w.Languages,
 	})
 	if err != nil {
-		log.Fatalf("Failed adding word: %v", err)
+		log.Fatalf("Failed indexing word: %v", err)
 	}
 
-	*completed++
-
-	if *completed%progress == 0 {
-		fmt.Printf("\rAdded %d words", *completed)
-	}
+	now := time.Now()
+	w.Indexed = &now
 
 	wg.Done()
 }
