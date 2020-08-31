@@ -15,8 +15,8 @@ type Word struct {
 
 type Language struct {
 	Code            string           `firestore:"code"`
-	Definitions     Definitions      `firestore:"definitions,omitempty"`
-	Etymology       Etymology        `firestore:"etymology,omitempty"`
+	Definitions     *Definitions     `firestore:"definitions,omitempty"`
+	Etymology       *Etymology       `firestore:"etymology,omitempty"`
 	Links           []tpl.Link       `firestore:"links,omitempty"`
 	Descendants     []tpl.Descendant `firestore:"descendants,omitempty"`
 	DescendantTrees []tpl.EtymTree   `firestore:"descendantTrees,omitempty"`
@@ -53,32 +53,36 @@ func (w *Word) IsEmpty() bool {
 }
 
 func (l *Language) IsEmpty() bool {
-	if l.Definitions.Nouns != nil {
-		return false
+	if l.Definitions != nil {
+		if l.Definitions.Nouns != nil {
+			return false
+		}
+		if l.Definitions.Adjectives != nil {
+			return false
+		}
 	}
-	if l.Definitions.Adjectives != nil {
-		return false
-	}
-	if l.Etymology.Cognates != nil {
-		return false
-	}
-	if l.Etymology.Mentions != nil {
-		return false
-	}
-	if l.Etymology.Borrows != nil {
-		return false
-	}
-	if l.Etymology.Derived != nil {
-		return false
-	}
-	if l.Etymology.Inherited != nil {
-		return false
-	}
-	if l.Etymology.Prefixes != nil {
-		return false
-	}
-	if l.Etymology.Suffixes != nil {
-		return false
+	if l.Etymology != nil {
+		if l.Etymology.Cognates != nil {
+			return false
+		}
+		if l.Etymology.Mentions != nil {
+			return false
+		}
+		if l.Etymology.Borrows != nil {
+			return false
+		}
+		if l.Etymology.Derived != nil {
+			return false
+		}
+		if l.Etymology.Inherited != nil {
+			return false
+		}
+		if l.Etymology.Prefixes != nil {
+			return false
+		}
+		if l.Etymology.Suffixes != nil {
+			return false
+		}
 	}
 	if l.Links != nil {
 		return false
@@ -97,9 +101,15 @@ func (l *Language) flushDefinition() {
 	if definition != "" {
 		switch l.section {
 		case nounSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
 			l.Definitions.Nouns =
 				append(l.Definitions.Nouns, definition)
 		case adjectiveSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
 			l.Definitions.Adjectives =
 				append(l.Definitions.Adjectives, definition)
 		}
@@ -305,12 +315,18 @@ Parse:
 				case "cog", "cognate":
 					cognate := template.ToCognate()
 					if _, ok := langMap[cognate.Lang]; ok {
+						if language.Etymology == nil {
+							language.Etymology = &Etymology{}
+						}
 						language.Etymology.Cognates =
 							append(language.Etymology.Cognates, cognate)
 					}
 				case "m", "mention":
 					mention := template.ToMention()
 					if _, ok := langMap[mention.Lang]; ok {
+						if language.Etymology == nil {
+							language.Etymology = &Etymology{}
+						}
 						language.Etymology.Mentions =
 							append(language.Etymology.Mentions, mention)
 					}
@@ -318,6 +334,9 @@ Parse:
 					borrow := template.ToBorrow()
 					if _, ok := langMap[borrow.Lang]; ok {
 						if _, ok := langMap[borrow.FromLang]; ok {
+							if language.Etymology == nil {
+								language.Etymology = &Etymology{}
+							}
 							language.Etymology.Borrows =
 								append(language.Etymology.Borrows, borrow)
 						}
@@ -326,6 +345,9 @@ Parse:
 					derived := template.ToDerived()
 					if _, ok := langMap[derived.Lang]; ok {
 						if _, ok := langMap[derived.FromLang]; ok {
+							if language.Etymology == nil {
+								language.Etymology = &Etymology{}
+							}
 							language.Etymology.Derived =
 								append(language.Etymology.Derived, derived)
 						}
@@ -334,6 +356,9 @@ Parse:
 					inherited := template.ToInherited()
 					if _, ok := langMap[inherited.Lang]; ok {
 						if _, ok := langMap[inherited.FromLang]; ok {
+							if language.Etymology == nil {
+								language.Etymology = &Etymology{}
+							}
 							language.Etymology.Inherited =
 								append(language.Etymology.Inherited, inherited)
 						}
@@ -341,12 +366,18 @@ Parse:
 				case "prefix":
 					prefix := template.ToPrefix()
 					if _, ok := langMap[prefix.Lang]; ok {
+						if language.Etymology == nil {
+							language.Etymology = &Etymology{}
+						}
 						language.Etymology.Prefixes =
 							append(language.Etymology.Prefixes, prefix)
 					}
 				case "suffix":
 					suffix := template.ToSuffix()
 					if _, ok := langMap[suffix.Lang]; ok {
+						if language.Etymology == nil {
+							language.Etymology = &Etymology{}
+						}
 						language.Etymology.Suffixes =
 							append(language.Etymology.Suffixes, suffix)
 					}
