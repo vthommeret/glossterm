@@ -44,7 +44,7 @@ func ReadGob(path string, data interface{}) error {
 }
 
 // WriteGob writes and compresses gob.
-func WriteGob(path string, data interface{}) error {
+func WriteGob(path string, data interface{}, verbose bool) error {
 	compressedPath := fmt.Sprintf("%s.gz", path)
 
 	// Gob writer
@@ -73,7 +73,9 @@ func WriteGob(path string, data interface{}) error {
 		return err
 	}
 
-	fmt.Printf("Wrote %q and %q\n", path, compressedPath)
+	if verbose {
+		fmt.Printf("Wrote %q and %q\n", path, compressedPath)
+	}
 
 	return nil
 }

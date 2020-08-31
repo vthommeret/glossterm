@@ -60,7 +60,7 @@ func main() {
 
 	fmt.Printf("Read %d words, resolved %d.\n", count, resolved)
 
-	err = gt.WriteGob(output, words)
+	err = gt.WriteGob(output, words, true)
 	if err != nil {
 		log.Fatalf("Unable to write and compress %s: %s", output, err)
 	}
