@@ -9,17 +9,17 @@ import (
 )
 
 type Word struct {
-	Name      string               `firestore:"name"`
-	Languages *map[string]Language `firestore:"languages"`
+	Name      string               `json:"name"`
+	Languages *map[string]Language `json:"languages"`
 }
 
 type Language struct {
 	Code            string           `firestore:"code"`
-	Definitions     *Definitions     `firestore:"definitions,omitempty"`
-	Etymology       *Etymology       `firestore:"etymology,omitempty"`
-	Links           []tpl.Link       `firestore:"links,omitempty"`
-	Descendants     []tpl.Descendant `firestore:"descendants,omitempty"`
-	DescendantTrees []tpl.EtymTree   `firestore:"descendantTrees,omitempty"`
+	Definitions     *Definitions     `json:"definitions,omitempty" firestore:"definitions,omitempty"`
+	Etymology       *Etymology       `json:"etymology,omitempty" firestore:"etymology,omitempty"`
+	Links           []tpl.Link       `json:"links,omitempty" firestore:"links,omitempty"`
+	Descendants     []tpl.Descendant `json:"descendants,omitempty" firestore:"descendants,omitempty"`
+	DescendantTrees []tpl.EtymTree   `json:"descendantTrees,omitempty" firestore:"descendantTrees,omitempty"`
 
 	section      sectionType
 	subSection   sectionType
@@ -34,18 +34,18 @@ type Language struct {
 }
 
 type Definitions struct {
-	Nouns      []string `firestore:"nouns,omitempty"`
-	Adjectives []string `firestore:"adjectives,omitempty"`
+	Nouns      []string `json:"nouns,omitempty" firestore:"nouns,omitempty"`
+	Adjectives []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
 }
 
 type Etymology struct {
-	Cognates  []tpl.Cognate   `firestore:"cognates,omitempty"`
-	Mentions  []tpl.Mention   `firestore:"mentions,omitempty"`
-	Borrows   []tpl.Borrow    `firestore:"borrows,omitempty"`
-	Derived   []tpl.Derived   `firestore:"derived,omitempty"`
-	Inherited []tpl.Inherited `firestore:"inherited,omitempty"`
-	Prefixes  []tpl.Prefix    `firestore:"prefixes,omitempty"`
-	Suffixes  []tpl.Suffix    `firestore:"suffixes,omitempty"`
+	Cognates  []tpl.Cognate   `json:"cognates,omitempty" firestore:"cognates,omitempty"`
+	Mentions  []tpl.Mention   `json:"mentions,omitempty" firestore:"mentions,omitempty"`
+	Borrows   []tpl.Borrow    `json:"borrows,omitempty" firestore:"borrows,omitempty"`
+	Derived   []tpl.Derived   `json:"derived,omitempty" firestore:"derived,omitempty"`
+	Inherited []tpl.Inherited `json:"inherited,omitempty" firestore:"inherited,omitempty"`
+	Prefixes  []tpl.Prefix    `json:"prefixes,omitempty" firestore:"prefixes,omitempty"`
+	Suffixes  []tpl.Suffix    `json:"suffixes,omitempty" firestore:"suffixes,omitempty"`
 }
 
 func (w *Word) IsEmpty() bool {

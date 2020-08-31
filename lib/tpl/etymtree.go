@@ -7,9 +7,9 @@ import (
 
 // https://en.wiktionary.org/wiki/Template:etymtree
 type EtymTree struct {
-	Lang     string `lang:"true" firestore:"lang,omitempty"`
-	RootLang string `lang:"true" firestore:"rootLang,omitempty"`
-	Word     string `names:"branch_term" firestore:"word,omitempty"`
+	Lang     string `lang:"true" json:"lang,omitempty" firestore:"lang,omitempty"`
+	RootLang string `lang:"true" json:"rootLang,omitempty" firestore:"rootLang,omitempty"`
+	Word     string `names:"branch_term" json:"word,omitempty" firestore:"word,omitempty"`
 }
 
 func (tpl *Template) ToEtymTree() EtymTree {

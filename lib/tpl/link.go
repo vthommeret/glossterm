@@ -4,12 +4,12 @@ import "reflect"
 
 // https://en.wiktionary.org/wiki/Template:link
 type Link struct {
-	Lang         string `lang:"true" firestore:"lang,omitempty"`
-	Word         string `firestore:"word,omitempty"`
-	Alt          string `firestore:"alt,omitempty"`
-	Gloss        string `names:"t" firestore:"gloss,omitempty"`
-	PartOfSpeech string `names:"pos" firestore:"partOfSpeech,omitempty"`
-	Literal      string `names:"lit" firestore:"literal,omitempty"`
+	Lang         string `lang:"true" json:"lang,omitempty" firestore:"lang,omitempty"`
+	Word         string `json:"word,omitempty" firestore:"word,omitempty"`
+	Alt          string `json:"alt,omitempty" firestore:"alt,omitempty"`
+	Gloss        string `names:"t" json:"gloss,omitempty" firestore:"gloss,omitempty"`
+	PartOfSpeech string `names:"pos" json:"partOfSpeech,omitempty" firestore:"partOfSpeech,omitempty"`
+	Literal      string `names:"lit" json:"literal,omitempty" firestore:"literal,omitempty"`
 }
 
 func (tpl *Template) ToLink() Link {
