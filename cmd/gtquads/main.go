@@ -68,7 +68,7 @@ func main() {
 	var quads []quad.Quad
 
 	for _, w := range words {
-		for _, l := range w.Languages {
+		for _, l := range *w.Languages {
 			if l.Code == inputLang {
 				for _, b := range l.Etymology.Borrows {
 					if b.FromLang == parentLang {
