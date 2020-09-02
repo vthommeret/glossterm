@@ -40,6 +40,7 @@ type Definitions struct {
 	Adjectives    []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
 	Verbs         []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
 	Interjections []string `json:"interjections,omitempty" firestore:"interjections,omitempty"`
+	Numerals      []string `json:"numerals,omitempty" firestore:"numerals,omitempty"`
 }
 
 type Etymology struct {
@@ -68,6 +69,9 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Interjections != nil {
+			return false
+		}
+		if l.Definitions.Numerals != nil {
 			return false
 		}
 	}
@@ -134,6 +138,12 @@ func (l *Language) flushDefinition() {
 			}
 			l.Definitions.Interjections =
 				append(l.Definitions.Interjections, definition)
+		case numeralSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Numerals =
+				append(l.Definitions.Numerals, definition)
 		}
 	}
 	l.definitionBuffer = nil
@@ -151,6 +161,7 @@ const (
 	adjectiveSection
 	verbSection
 	interjectionSection
+	numeralSection
 
 	descendantsSection
 )
@@ -163,6 +174,7 @@ var wordTypeMap = map[string]sectionType{
 	"Adjective":    adjectiveSection,
 	"Verb":         verbSection,
 	"Interjection": interjectionSection,
+	"Numeral":      numeralSection,
 }
 
 type ListItem struct {
@@ -320,7 +332,7 @@ Parse:
 						language.subSection = unknownSection
 					}
 				}
-			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection || language.section == verbSection || language.section == interjectionSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
+			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection || language.section == verbSection || language.section == interjectionSection || language.section == numeralSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
 				language.definitionBuffer = append(language.definitionBuffer, i.val)
 			}
 		case itemLeftTemplate:
