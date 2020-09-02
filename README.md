@@ -22,6 +22,9 @@ to install globally available commands that can be run as e.g. `gtdump`.
    reads words.gob and looks up DescendantTrees references in
    descendants.gob, and inlines them.
 
+1. `gtcompare`
+   compares new index to old index. always use to manually verify parsing changes
+
 1. `gtindex`
    indexes terms for each word to power autocomplete.
 
