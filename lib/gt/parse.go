@@ -36,9 +36,10 @@ type Language struct {
 }
 
 type Definitions struct {
-	Nouns      []string `json:"nouns,omitempty" firestore:"nouns,omitempty"`
-	Adjectives []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
-	Verbs      []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
+	Nouns         []string `json:"nouns,omitempty" firestore:"nouns,omitempty"`
+	Adjectives    []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
+	Verbs         []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
+	Interjections []string `json:"interjections,omitempty" firestore:"interjections,omitempty"`
 }
 
 type Etymology struct {
@@ -64,6 +65,9 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Verbs != nil {
+			return false
+		}
+		if l.Definitions.Interjections != nil {
 			return false
 		}
 	}
@@ -124,6 +128,12 @@ func (l *Language) flushDefinition() {
 			}
 			l.Definitions.Verbs =
 				append(l.Definitions.Verbs, definition)
+		case interjectionSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Interjections =
+				append(l.Definitions.Interjections, definition)
 		}
 	}
 	l.definitionBuffer = nil
@@ -136,9 +146,12 @@ type sectionType int
 const (
 	unknownSection sectionType = iota
 	etymologySection
+
 	nounSection
 	adjectiveSection
 	verbSection
+	interjectionSection
+
 	descendantsSection
 )
 
@@ -295,6 +308,8 @@ Parse:
 						language.section = adjectiveSection
 					} else if i.val == "Verb" {
 						language.section = verbSection
+					} else if i.val == "Interjection" {
+						language.section = interjectionSection
 					} else {
 						language.section = unknownSection
 					}
@@ -309,7 +324,7 @@ Parse:
 						language.subSection = unknownSection
 					}
 				}
-			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection || language.section == verbSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
+			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection || language.section == verbSection || language.section == interjectionSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
 				language.definitionBuffer = append(language.definitionBuffer, i.val)
 			}
 		case itemLeftTemplate:
