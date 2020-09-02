@@ -158,6 +158,13 @@ const (
 const linkCategoryPrefix = "Category:"
 const linkReferencePrefix = "#"
 
+var wordTypeMap = map[string]sectionType{
+	"Noun":         nounSection,
+	"Adjective":    adjectiveSection,
+	"Verb":         verbSection,
+	"Interjection": interjectionSection,
+}
+
 type ListItem struct {
 	Prefix string
 	Links  []string
@@ -299,21 +306,10 @@ Parse:
 					language = nil
 				}
 			} else if inSectionHeader && language != nil {
-				if language.sectionDepth == 2 {
-					if strings.HasPrefix(i.val, "Etymology") {
-						language.section = etymologySection
-					} else if i.val == "Noun" {
-						language.section = nounSection
-					} else if i.val == "Adjective" {
-						language.section = adjectiveSection
-					} else if i.val == "Verb" {
-						language.section = verbSection
-					} else if i.val == "Interjection" {
-						language.section = interjectionSection
-					} else {
-						language.section = unknownSection
-					}
-					language.subSection = unknownSection
+				if language.sectionDepth == 2 && strings.HasPrefix(i.val, "Etymology") {
+					language.section = etymologySection
+				} else if wordSection, ok := wordTypeMap[i.val]; (language.sectionDepth == 2 || language.sectionDepth == 3) && ok {
+					language.section = wordSection
 				} else {
 					// This will exclude subsections named "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
 					language.section = unknownSection
