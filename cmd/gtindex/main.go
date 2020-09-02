@@ -93,6 +93,10 @@ func main() {
 	ignoreUnexported := cmpopts.IgnoreUnexported(gt.Language{})
 
 	for w, newWord := range newWords {
+		if newWord.Indexed != nil {
+			continue
+		}
+
 		if !gt.ShouldIndex(newWord) {
 			if previousWord, ok := previousWords[w]; ok && previousWord.Indexed != nil {
 				actions = append(actions, IndexAction{

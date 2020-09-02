@@ -47,10 +47,6 @@ func GetIndex(path string) (*radix.Tree, error) {
 }
 
 func ShouldIndex(word *Word) bool {
-	if word.Indexed != nil {
-		return false
-	}
-
 	// Not supported by Firestore and probably not something people
 	// are searching for
 	if strings.Contains(word.Name, "/") {

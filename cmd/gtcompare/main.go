@@ -41,16 +41,20 @@ func main() {
 			continue
 		}
 		if _, ok := newWords[w]; !ok {
-			fmt.Printf("remove %s\n", w)
+			fmt.Printf("remove (no longer present) %s\n", w)
 		}
 	}
 
 	ignoreUnexported := cmpopts.IgnoreUnexported(gt.Language{})
 
 	for w, newWord := range newWords {
+		if newWord.Indexed != nil {
+			continue
+		}
+
 		if !gt.ShouldIndex(newWord) {
 			if previousWord, ok := previousWords[w]; ok && previousWord.Indexed != nil {
-				fmt.Printf("remove %s\n", w)
+				fmt.Printf("remove (no longer valid) %s\n", w)
 			}
 			continue
 		}
