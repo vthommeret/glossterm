@@ -38,6 +38,7 @@ type Language struct {
 type Definitions struct {
 	Nouns      []string `json:"nouns,omitempty" firestore:"nouns,omitempty"`
 	Adjectives []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
+	Verbs      []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
 }
 
 type Etymology struct {
@@ -60,6 +61,9 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Adjectives != nil {
+			return false
+		}
+		if l.Definitions.Verbs != nil {
 			return false
 		}
 	}
@@ -114,6 +118,12 @@ func (l *Language) flushDefinition() {
 			}
 			l.Definitions.Adjectives =
 				append(l.Definitions.Adjectives, definition)
+		case verbSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Verbs =
+				append(l.Definitions.Verbs, definition)
 		}
 	}
 	l.definitionBuffer = nil
@@ -128,6 +138,7 @@ const (
 	etymologySection
 	nounSection
 	adjectiveSection
+	verbSection
 	descendantsSection
 )
 
@@ -282,6 +293,8 @@ Parse:
 						language.section = nounSection
 					} else if i.val == "Adjective" {
 						language.section = adjectiveSection
+					} else if i.val == "Verb" {
+						language.section = verbSection
 					} else {
 						language.section = unknownSection
 					}
@@ -296,7 +309,7 @@ Parse:
 						language.subSection = unknownSection
 					}
 				}
-			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
+			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection || language.section == verbSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
 				language.definitionBuffer = append(language.definitionBuffer, i.val)
 			}
 		case itemLeftTemplate:
