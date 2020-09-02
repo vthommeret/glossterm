@@ -17,6 +17,8 @@ to install globally available commands that can be run as e.g. `gtdump`.
 
 1. `gtparse`
    parses split files into words.gob and descendants.gob.
+   Use --no-backup after initial change to index to edit index in place and
+   compare to previously committed index.
 
 1. `gtresolve`
    reads words.gob and looks up DescendantTrees references in

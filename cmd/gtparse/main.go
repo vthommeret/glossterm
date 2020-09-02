@@ -13,6 +13,7 @@ import (
 const defaultInputFile = "cmd/gtsplit/pages.xml"
 const defaultOutputFile = "data/words.gob"
 const defaultDescendantsOutputFile = "data/descendants.gob"
+const defaultNoBackup = false
 
 const total = 637200 // approximate
 const step = total / 100
@@ -20,11 +21,13 @@ const step = total / 100
 var inputFile string
 var outputFile string
 var descendantsOutputFile string
+var noBackup bool
 
 func init() {
 	flag.StringVar(&inputFile, "i", defaultInputFile, "Input file (xml format)")
 	flag.StringVar(&outputFile, "o", defaultOutputFile, "Output file (gob format)")
 	flag.StringVar(&descendantsOutputFile, "do", defaultDescendantsOutputFile, "Descendants output file (gob format)")
+	flag.BoolVar(&noBackup, "no-backup", defaultNoBackup, "Whether to not backup index. Used when iterating on changes to index.")
 	flag.Parse()
 }
 
@@ -95,7 +98,7 @@ Loop:
 
 	fmt.Printf("\n%d total words, %d descendant trees\n", count, descendantsCount)
 
-	err = gt.WriteGob(outputFile, words, true, true)
+	err = gt.WriteGob(outputFile, words, true, !noBackup)
 	if err != nil {
 		log.Fatalf("Unable to write and compress %s: %s", outputFile, err)
 	}
