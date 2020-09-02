@@ -18,3 +18,7 @@ func (tpl *Template) ToLink() Link {
 	l.Word = toEntryName(l.Lang, l.Word)
 	return l
 }
+
+func (l *Link) Text() string {
+	return l.Word
+}

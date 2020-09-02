@@ -184,6 +184,10 @@ type ListItem struct {
 
 type TextBuffer []string
 
+func definitionSection(section sectionType) bool {
+	return section == nounSection || section == adjectiveSection || section == verbSection || section == interjectionSection || section == numeralSection
+}
+
 // Parses a given word (e.g. https://en.wiktionary.org/wiki/hombre).
 func ParseWord(p Page, langMap map[string]bool) (Word, error) {
 	name := p.Title
@@ -332,7 +336,7 @@ Parse:
 						language.subSection = unknownSection
 					}
 				}
-			} else if language != nil && (language.section == nounSection || language.section == adjectiveSection || language.section == verbSection || language.section == interjectionSection || language.section == numeralSection) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
+			} else if language != nil && definitionSection(language.section) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
 				language.definitionBuffer = append(language.definitionBuffer, i.val)
 			}
 		case itemLeftTemplate:
@@ -444,6 +448,14 @@ Parse:
 							language.DescendantTrees =
 								append(language.DescendantTrees, etymTree)
 						}
+					}
+				}
+			} else if definitionSection(language.section) {
+				switch template.Action {
+				case "l", "link":
+					link := template.ToLink()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, link.Text())
 					}
 				}
 			}
