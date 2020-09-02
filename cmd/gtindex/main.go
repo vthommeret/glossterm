@@ -11,6 +11,9 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/vthommeret/glossterm/lib/gt"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+
 	"github.com/blevesearch/segment"
 
 	"golang.org/x/net/context"
@@ -21,19 +24,34 @@ import (
 )
 
 const defaultInput = "data/words.gob"
+const defaultPreviousInput = "data/previous/words.gob"
 const defaultOutput = "data/words.gob"
 
-//const max = 25
 const batch = 1000
 
 var input string
+var previousInput string
 var output string
 
 func init() {
 	flag.StringVar(&input, "i", defaultInput, "Input file (gob format)")
+	flag.StringVar(&previousInput, "pi", defaultPreviousInput, "Previous input file (gob format)")
 	flag.StringVar(&output, "o", defaultOutput, "Output file (gob format)")
 	flag.Parse()
 }
+
+type IndexAction struct {
+	Type IndexActionType
+	Word *gt.Word
+}
+
+type IndexActionType int
+
+const (
+	ActionAdd IndexActionType = iota
+	ActionRemove
+	ActionUpdate
+)
 
 func main() {
 	ctx := context.Background()
@@ -43,111 +61,150 @@ func main() {
 		log.Fatalf("Unable to initialize Firebase app: %v", err)
 	}
 
-	store, err := app.Firestore(ctx)
-	if err != nil {
-		log.Fatalf("Unable to initialize Firestore: %v", err)
-	}
-	defer store.Close()
-
-	// Get words.
-	words, err := gt.GetWords(input)
+	// Get new words.
+	newWords, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
 
-	count := 0
-	termCount := 0
-	skipped := 0
+	// Get preview words
+	previousWords, err := gt.GetWords(previousInput)
+	if err != nil {
+		log.Fatalf("Unable to get %q words: %s", previousInput, err)
+	}
 
-	// Create wait group
-	var wg sync.WaitGroup
+	// Update index
 
-	for _, w := range words {
-		// Not supported by Firestore and probably not something people
-		// are searching for
-		if strings.Contains(w.Name, "/") {
+	actions := []IndexAction{}
+
+	// Remove words
+	for w, previousWord := range previousWords {
+		if previousWord.Indexed == nil {
 			continue
 		}
-		if w.Languages == nil {
-			continue
+		if _, ok := newWords[w]; !ok {
+			actions = append(actions, IndexAction{
+				Type: ActionRemove,
+				Word: previousWord,
+			})
 		}
-		if w.Indexed != nil {
-			skipped++
-			continue
-		}
+	}
 
-		// Require definitions
-		hasDefinitions := false
-		for _, l := range *w.Languages {
-			if l.Definitions != nil {
-				hasDefinitions = true
-				break
+	ignoreUnexported := cmpopts.IgnoreUnexported(gt.Language{})
+
+	for w, newWord := range newWords {
+		if !shouldIndex(newWord) {
+			if previousWord, ok := previousWords[w]; ok && previousWord.Indexed != nil {
+				actions = append(actions, IndexAction{
+					Type: ActionRemove,
+					Word: newWord,
+				})
 			}
-		}
-		if !hasDefinitions {
 			continue
-		}
-
-		ts, err := getTerms(w.Name)
-		if err != nil {
-			log.Fatalf("Unable to get %q terms: %s", w.Name, err)
 		}
 
 		/*
-			b, err := json.MarshalIndent(w, "", "  ")
+			b, err := json.MarshalIndent(newWord, "", "  ")
 			if err != nil {
 				log.Fatalf("Unable to marshal JSON: %s", err)
 			}
 			fmt.Printf("%s\n", string(b))
 		*/
 
-		wg.Add(1)
-		go addWord(ctx, store, words, w, ts, &wg)
+		previousWord, isPrevious := previousWords[w]
 
-		count++
-		termCount += len(ts)
-
-		if count%batch == 0 {
-			commitWords(&wg, words, count, termCount, skipped)
+		var isUpdated = false
+		if previousWord != nil {
+			previousWord.Indexed = nil
+			isUpdated = !cmp.Equal(previousWord, newWord, ignoreUnexported)
 		}
 
-		/*
-			if count == max {
-				break
+		if !isPrevious || isUpdated {
+			var actionType IndexActionType
+			if !isPrevious {
+				actionType = ActionAdd
+			} else if isUpdated {
+				actionType = ActionUpdate
 			}
-		*/
+			actions = append(actions, IndexAction{
+				Type: actionType,
+				Word: newWord,
+			})
+		}
 	}
 
-	if count%batch != 0 {
-		commitWords(&wg, words, count, termCount, skipped)
+	store, err := app.Firestore(ctx)
+	if err != nil {
+		log.Fatalf("Unable to initialize Firestore: %v", err)
+	}
+	defer store.Close()
+
+	var wg sync.WaitGroup
+
+	added := 0
+	removed := 0
+	updated := 0
+	total := 0
+
+	for _, action := range actions {
+		wg.Add(1)
+
+		word := action.Word
+
+		ts, err := getTerms(word.Name)
+		if err != nil {
+			log.Fatalf("Unable to get %q terms: %s", word.Name, err)
+		}
+
+		switch action.Type {
+		case ActionAdd:
+			go updateWord(ctx, store, word, ts, &wg)
+			added++
+		case ActionUpdate:
+			go updateWord(ctx, store, word, ts, &wg)
+			updated++
+		case ActionRemove:
+			go removeWord(ctx, store, word, &wg)
+			removed++
+		}
+		total = added + removed + updated
+
+		if total%batch == 0 {
+			commitWords(&wg, newWords, added, updated, removed)
+		}
+	}
+
+	if total%batch != 0 {
+		commitWords(&wg, newWords, added, updated, removed)
 	}
 }
 
-func commitWords(wg *sync.WaitGroup, words map[string]*gt.Word, count, termCount, skipped int) {
-	wg.Wait()
-	err := gt.WriteGob(output, words, false)
-	if err != nil {
-		log.Fatalf("Unable to write and compressed words %s: %s", output, err)
-	}
-	fmt.Printf("\rIndexed %d words (%d terms); %d already indexed", count, termCount, skipped)
-}
-
-func addWord(ctx context.Context, store *firestore.Client, words map[string]*gt.Word, w *gt.Word, ts map[string]bool, wg *sync.WaitGroup) {
-	wordsRef := store.Collection("words")
-
-	_, err := wordsRef.Doc(w.Name).Set(ctx, map[string]interface{}{
-		"name":      w.Name,
-		"terms":     ts,
-		"languages": w.Languages,
-	})
-	if err != nil {
-		log.Fatalf("Failed indexing word: %v", err)
+func shouldIndex(word *gt.Word) bool {
+	if word.Indexed != nil {
+		return false
 	}
 
-	now := time.Now()
-	w.Indexed = &now
+	// Not supported by Firestore and probably not something people
+	// are searching for
+	if strings.Contains(word.Name, "/") {
+		return false
+	}
+	if word.Languages == nil {
+		return false
+	}
 
-	wg.Done()
+	// Require definitions
+	hasDefinitions := false
+	for _, l := range *word.Languages {
+		if l.Definitions != nil {
+			hasDefinitions = true
+			break
+		}
+	}
+	if !hasDefinitions {
+		return false
+	}
+	return true
 }
 
 // Returns list of unique and normalized terms for a given word.
@@ -165,4 +222,42 @@ func getTerms(w string) (terms map[string]bool, err error) {
 		return nil, err
 	}
 	return terms, nil
+}
+
+func removeWord(ctx context.Context, store *firestore.Client, w *gt.Word, wg *sync.WaitGroup) {
+	wordsRef := store.Collection("words")
+
+	_, err := wordsRef.Doc(w.Name).Delete(ctx)
+	if err != nil {
+		log.Fatalf("Failed deleting word: %v", err)
+	}
+
+	wg.Done()
+}
+
+func updateWord(ctx context.Context, store *firestore.Client, w *gt.Word, ts map[string]bool, wg *sync.WaitGroup) {
+	wordsRef := store.Collection("words")
+
+	_, err := wordsRef.Doc(w.Name).Set(ctx, map[string]interface{}{
+		"name":      w.Name,
+		"terms":     ts,
+		"languages": w.Languages,
+	})
+	if err != nil {
+		log.Fatalf("Failed indexing word: %v", err)
+	}
+
+	now := time.Now()
+	w.Indexed = &now
+
+	wg.Done()
+}
+
+func commitWords(wg *sync.WaitGroup, words map[string]*gt.Word, added, updated, removed int) {
+	wg.Wait()
+	err := gt.WriteGob(output, words, false, false)
+	if err != nil {
+		log.Fatalf("Unable to write and compressed words %s: %s", output, err)
+	}
+	fmt.Printf("\rAdded %d words; updated %d words; removed %d words", added, updated, removed)
 }

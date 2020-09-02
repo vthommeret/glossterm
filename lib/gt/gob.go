@@ -7,9 +7,12 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
+
+const previousDir = "previous"
 
 // ReadGob reads gob either from path or compressed path.
 func ReadGob(path string, data interface{}) error {
@@ -43,12 +46,31 @@ func ReadGob(path string, data interface{}) error {
 	return nil
 }
 
+func backup(p string) error {
+	if exists(p) {
+		dir := path.Dir(p)
+		base := path.Base(p)
+		backup := fmt.Sprintf("%s/%s/%s", dir, previousDir, base)
+		err := os.Rename(p, backup)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // WriteGob writes and compresses gob.
-func WriteGob(path string, data interface{}, verbose bool) error {
-	compressedPath := fmt.Sprintf("%s.gz", path)
+func WriteGob(p string, data interface{}, verbose bool, shouldBackup bool) error {
+	compressedPath := fmt.Sprintf("%s.gz", p)
+
+	// Backup files for comparison
+	if shouldBackup {
+		backup(p)
+		backup(compressedPath)
+	}
 
 	// Gob writer
-	out, err := os.Create(path)
+	out, err := os.Create(p)
 	if err != nil {
 		return err
 	}
@@ -74,7 +96,7 @@ func WriteGob(path string, data interface{}, verbose bool) error {
 	}
 
 	if verbose {
-		fmt.Printf("Wrote %q and %q\n", path, compressedPath)
+		fmt.Printf("Wrote %q and %q\n", p, compressedPath)
 	}
 
 	return nil

@@ -95,12 +95,12 @@ Loop:
 
 	fmt.Printf("\n%d total words, %d descendant trees\n", count, descendantsCount)
 
-	err = gt.WriteGob(outputFile, words, true)
+	err = gt.WriteGob(outputFile, words, true, true)
 	if err != nil {
 		log.Fatalf("Unable to write and compress %s: %s", outputFile, err)
 	}
 
-	err = gt.WriteGob(descendantsOutputFile, descendants, true)
+	err = gt.WriteGob(descendantsOutputFile, descendants, true, true)
 	if err != nil {
 		log.Fatalf("Unable to write and compress %s: %s", descendantsOutputFile, err)
 	}
