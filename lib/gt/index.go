@@ -45,3 +45,31 @@ func GetIndex(path string) (*radix.Tree, error) {
 	}
 	return t, nil
 }
+
+func ShouldIndex(word *Word) bool {
+	if word.Indexed != nil {
+		return false
+	}
+
+	// Not supported by Firestore and probably not something people
+	// are searching for
+	if strings.Contains(word.Name, "/") {
+		return false
+	}
+	if word.Languages == nil {
+		return false
+	}
+
+	// Require definitions
+	hasDefinitions := false
+	for _, l := range *word.Languages {
+		if l.Definitions != nil {
+			hasDefinitions = true
+			break
+		}
+	}
+	if !hasDefinitions {
+		return false
+	}
+	return true
+}

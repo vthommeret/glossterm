@@ -36,7 +36,10 @@ func main() {
 	}
 
 	// Remove words
-	for w := range previousWords {
+	for w, previousWord := range previousWords {
+		if previousWord.Indexed == nil {
+			continue
+		}
 		if _, ok := newWords[w]; !ok {
 			fmt.Printf("remove %s\n", w)
 		}
@@ -45,14 +48,26 @@ func main() {
 	ignoreUnexported := cmpopts.IgnoreUnexported(gt.Language{})
 
 	for w, newWord := range newWords {
-		if previousWord, ok := previousWords[w]; !ok {
-			fmt.Printf("add %s\n", w)
-		} else {
+		if !gt.ShouldIndex(newWord) {
+			if previousWord, ok := previousWords[w]; ok && previousWord.Indexed != nil {
+				fmt.Printf("remove %s\n", w)
+			}
+			continue
+		}
+
+		previousWord, isPrevious := previousWords[w]
+
+		var isUpdated = false
+		if previousWord != nil {
 			previousWord.Indexed = nil
-			//if diff := cmp.Diff(previousWord, newWord, ignoreUnexported); diff != "" {
-			//fmt.Printf("update %s\n%s", w, diff)
-			if !cmp.Equal(previousWord, newWord, ignoreUnexported) {
-				fmt.Printf("update %s\n", w)
+			isUpdated = !cmp.Equal(previousWord, newWord, ignoreUnexported)
+		}
+
+		if !isPrevious {
+			fmt.Printf("add %s\n", w)
+		} else if isUpdated {
+			if diff := cmp.Diff(previousWord, newWord, ignoreUnexported); diff != "" {
+				fmt.Printf("update %s\n%s", w, diff)
 			}
 		}
 	}

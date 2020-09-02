@@ -93,7 +93,7 @@ func main() {
 	ignoreUnexported := cmpopts.IgnoreUnexported(gt.Language{})
 
 	for w, newWord := range newWords {
-		if !shouldIndex(newWord) {
+		if !gt.ShouldIndex(newWord) {
 			if previousWord, ok := previousWords[w]; ok && previousWord.Indexed != nil {
 				actions = append(actions, IndexAction{
 					Type: ActionRemove,
@@ -177,34 +177,6 @@ func main() {
 	if total%batch != 0 {
 		commitWords(&wg, newWords, added, updated, removed)
 	}
-}
-
-func shouldIndex(word *gt.Word) bool {
-	if word.Indexed != nil {
-		return false
-	}
-
-	// Not supported by Firestore and probably not something people
-	// are searching for
-	if strings.Contains(word.Name, "/") {
-		return false
-	}
-	if word.Languages == nil {
-		return false
-	}
-
-	// Require definitions
-	hasDefinitions := false
-	for _, l := range *word.Languages {
-		if l.Definitions != nil {
-			hasDefinitions = true
-			break
-		}
-	}
-	if !hasDefinitions {
-		return false
-	}
-	return true
 }
 
 // Returns list of unique and normalized terms for a given word.

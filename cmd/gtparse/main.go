@@ -14,7 +14,7 @@ const defaultInputFile = "cmd/gtsplit/pages.xml"
 const defaultOutputFile = "data/words.gob"
 const defaultDescendantsOutputFile = "data/descendants.gob"
 
-const total = 590000 // approximate
+const total = 637200 // approximate
 const step = total / 100
 
 var inputFile string
