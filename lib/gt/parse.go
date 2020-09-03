@@ -39,6 +39,7 @@ type Definitions struct {
 	Nouns         []string `json:"nouns,omitempty" firestore:"nouns,omitempty"`
 	Adjectives    []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
 	Verbs         []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
+	Articles      []string `json:"articles,omitempty" firestore:"articles,omitempty"`
 	Interjections []string `json:"interjections,omitempty" firestore:"interjections,omitempty"`
 	Numerals      []string `json:"numerals,omitempty" firestore:"numerals,omitempty"`
 }
@@ -66,6 +67,9 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Verbs != nil {
+			return false
+		}
+		if l.Definitions.Articles != nil {
 			return false
 		}
 		if l.Definitions.Interjections != nil {
@@ -132,6 +136,12 @@ func (l *Language) flushDefinition() {
 			}
 			l.Definitions.Verbs =
 				append(l.Definitions.Verbs, definition)
+		case articleSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Articles =
+				append(l.Definitions.Articles, definition)
 		case interjectionSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
@@ -160,6 +170,7 @@ const (
 	nounSection
 	adjectiveSection
 	verbSection
+	articleSection
 	interjectionSection
 	numeralSection
 
@@ -173,6 +184,7 @@ var wordTypeMap = map[string]sectionType{
 	"Noun":         nounSection,
 	"Adjective":    adjectiveSection,
 	"Verb":         verbSection,
+	"Article":      articleSection,
 	"Interjection": interjectionSection,
 	"Numeral":      numeralSection,
 }
@@ -185,7 +197,7 @@ type ListItem struct {
 type TextBuffer []string
 
 func definitionSection(section sectionType) bool {
-	return section == nounSection || section == adjectiveSection || section == verbSection || section == interjectionSection || section == numeralSection
+	return section == nounSection || section == adjectiveSection || section == verbSection || section == articleSection || section == interjectionSection || section == numeralSection
 }
 
 // Parses a given word (e.g. https://en.wiktionary.org/wiki/hombre).
