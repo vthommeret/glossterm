@@ -468,6 +468,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, nonGloss.Text())
 					}
+				case "feminine noun of":
+					femNoun := template.ToFemNoun()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, femNoun.Text())
+					}
 				}
 			}
 		case itemAction:
