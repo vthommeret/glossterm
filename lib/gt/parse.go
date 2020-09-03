@@ -457,6 +457,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, link.Text())
 					}
+				case "gloss":
+					gloss := template.ToGloss()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, gloss.Text())
+					}
 				}
 			}
 		case itemAction:
