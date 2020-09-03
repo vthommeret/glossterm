@@ -450,7 +450,8 @@ Parse:
 						}
 					}
 				}
-			} else if definitionSection(language.section) {
+			}
+			if definitionSection(language.section) {
 				switch template.Action {
 				case "l", "link":
 					link := template.ToLink()
