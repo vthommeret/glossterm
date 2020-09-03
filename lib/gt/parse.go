@@ -40,6 +40,9 @@ type Definitions struct {
 	Adjectives    []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
 	Verbs         []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
 	Articles      []string `json:"articles,omitempty" firestore:"articles,omitempty"`
+	Prepositions  []string `json:"prepositions,omitempty" firestore:"prepositions,omitempty"`
+	Pronouns      []string `json:"pronouns,omitempty" firestore:"pronouns,omitempty"`
+	Conjunctions  []string `json:"conjunctions,omitempty" firestore:"conjunctions,omitempty"`
 	Interjections []string `json:"interjections,omitempty" firestore:"interjections,omitempty"`
 	Numerals      []string `json:"numerals,omitempty" firestore:"numerals,omitempty"`
 }
@@ -70,6 +73,15 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Articles != nil {
+			return false
+		}
+		if l.Definitions.Prepositions != nil {
+			return false
+		}
+		if l.Definitions.Pronouns != nil {
+			return false
+		}
+		if l.Definitions.Conjunctions != nil {
 			return false
 		}
 		if l.Definitions.Interjections != nil {
@@ -142,6 +154,24 @@ func (l *Language) flushDefinition() {
 			}
 			l.Definitions.Articles =
 				append(l.Definitions.Articles, definition)
+		case prepositionSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Prepositions =
+				append(l.Definitions.Prepositions, definition)
+		case pronounSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Pronouns =
+				append(l.Definitions.Pronouns, definition)
+		case conjunctionSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Conjunctions =
+				append(l.Definitions.Conjunctions, definition)
 		case interjectionSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
@@ -171,6 +201,9 @@ const (
 	adjectiveSection
 	verbSection
 	articleSection
+	prepositionSection
+	pronounSection
+	conjunctionSection
 	interjectionSection
 	numeralSection
 
@@ -185,6 +218,9 @@ var wordTypeMap = map[string]sectionType{
 	"Adjective":    adjectiveSection,
 	"Verb":         verbSection,
 	"Article":      articleSection,
+	"Preposition":  prepositionSection,
+	"Pronoun":      pronounSection,
+	"Conjunction":  conjunctionSection,
 	"Interjection": interjectionSection,
 	"Numeral":      numeralSection,
 }
@@ -197,7 +233,7 @@ type ListItem struct {
 type TextBuffer []string
 
 func definitionSection(section sectionType) bool {
-	return section == nounSection || section == adjectiveSection || section == verbSection || section == articleSection || section == interjectionSection || section == numeralSection
+	return section == nounSection || section == adjectiveSection || section == verbSection || section == articleSection || section == prepositionSection || section == pronounSection || section == conjunctionSection || section == interjectionSection || section == numeralSection
 }
 
 // Parses a given word (e.g. https://en.wiktionary.org/wiki/hombre).
