@@ -77,6 +77,10 @@ func main() {
 
 	actions := []IndexAction{}
 
+	var addTotal int
+	var removeTotal int
+	var updateTotal int
+
 	// Remove words
 	for w, previousWord := range previousWords {
 		if previousWord.Indexed == nil {
@@ -87,13 +91,17 @@ func main() {
 				Type: ActionRemove,
 				Word: previousWord,
 			})
+			removeTotal++
 		}
 	}
 
 	ignoreUnexported := cmpopts.IgnoreUnexported(gt.Language{})
 
+	var alreadyIndexed int
+
 	for w, newWord := range newWords {
 		if newWord.Indexed != nil {
+			alreadyIndexed++
 			continue
 		}
 
@@ -103,6 +111,7 @@ func main() {
 					Type: ActionRemove,
 					Word: newWord,
 				})
+				removeTotal++
 			}
 			continue
 		}
@@ -127,8 +136,10 @@ func main() {
 			var actionType IndexActionType
 			if !isPrevious {
 				actionType = ActionAdd
+				addTotal++
 			} else if isUpdated {
 				actionType = ActionUpdate
+				updateTotal++
 			}
 			actions = append(actions, IndexAction{
 				Type: actionType,
@@ -136,6 +147,8 @@ func main() {
 			})
 		}
 	}
+
+	fmt.Printf("%d words already indexed\n", alreadyIndexed)
 
 	store, err := app.Firestore(ctx)
 	if err != nil {
@@ -174,12 +187,12 @@ func main() {
 		total = added + removed + updated
 
 		if total%batch == 0 {
-			commitWords(&wg, newWords, added, updated, removed)
+			commitWords(&wg, newWords, added, addTotal, updated, updateTotal, removed, removeTotal)
 		}
 	}
 
 	if total%batch != 0 {
-		commitWords(&wg, newWords, added, updated, removed)
+		commitWords(&wg, newWords, added, addTotal, updated, updateTotal, removed, removeTotal)
 	}
 }
 
@@ -229,11 +242,11 @@ func updateWord(ctx context.Context, store *firestore.Client, w *gt.Word, ts map
 	wg.Done()
 }
 
-func commitWords(wg *sync.WaitGroup, words map[string]*gt.Word, added, updated, removed int) {
+func commitWords(wg *sync.WaitGroup, words map[string]*gt.Word, added, addTotal, updated, updateTotal, removed, removeTotal int) {
 	wg.Wait()
 	err := gt.WriteGob(output, words, false, false)
 	if err != nil {
 		log.Fatalf("Unable to write and compressed words %s: %s", output, err)
 	}
-	fmt.Printf("\rAdded %d words; updated %d words; removed %d words", added, updated, removed)
+	fmt.Printf("\rAdded %d/%d words; updated %d/%d words; removed %d/%d words", added, addTotal, updated, updateTotal, removed, removeTotal)
 }
