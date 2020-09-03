@@ -463,6 +463,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, gloss.Text())
 					}
+				case "n-g", "non-gloss":
+					nonGloss := template.ToNonGloss()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, nonGloss.Text())
+					}
 				}
 			}
 		case itemAction:
