@@ -46,6 +46,8 @@ type Definitions struct {
 	Conjunctions  []string `json:"conjunctions,omitempty" firestore:"conjunctions,omitempty"`
 	Interjections []string `json:"interjections,omitempty" firestore:"interjections,omitempty"`
 	Numerals      []string `json:"numerals,omitempty" firestore:"numerals,omitempty"`
+	Particles     []string `json:"particles,omitempty" firestore:"particles,omitempty"`
+	Determiners   []string `json:"determiners,omitempty" firestore:"determiners,omitempty"`
 }
 
 type Etymology struct {
@@ -92,6 +94,12 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Numerals != nil {
+			return false
+		}
+		if l.Definitions.Particles != nil {
+			return false
+		}
+		if l.Definitions.Determiners != nil {
 			return false
 		}
 	}
@@ -194,6 +202,18 @@ func (l *Language) flushDefinition() {
 			}
 			l.Definitions.Numerals =
 				append(l.Definitions.Numerals, definition)
+		case particleSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Particles =
+				append(l.Definitions.Particles, definition)
+		case determinerSection:
+			if l.Definitions == nil {
+				l.Definitions = &Definitions{}
+			}
+			l.Definitions.Determiners =
+				append(l.Definitions.Determiners, definition)
 		}
 	}
 	l.definitionBuffer = nil
@@ -217,6 +237,8 @@ const (
 	conjunctionSection
 	interjectionSection
 	numeralSection
+	particleSection
+	determinerSection
 
 	descendantsSection
 )
@@ -235,6 +257,8 @@ var wordTypeMap = map[string]sectionType{
 	"Conjunction":  conjunctionSection,
 	"Interjection": interjectionSection,
 	"Numeral":      numeralSection,
+	"Particle":     particleSection,
+	"Determiner":   determinerSection,
 }
 
 type ListItem struct {
@@ -245,7 +269,7 @@ type ListItem struct {
 type TextBuffer []string
 
 func definitionSection(section sectionType) bool {
-	return section == nounSection || section == adjectiveSection || section == verbSection || section == adverbSection || section == articleSection || section == prepositionSection || section == pronounSection || section == conjunctionSection || section == interjectionSection || section == numeralSection
+	return section == nounSection || section == adjectiveSection || section == verbSection || section == adverbSection || section == articleSection || section == prepositionSection || section == pronounSection || section == conjunctionSection || section == interjectionSection || section == numeralSection || section == particleSection || section == determinerSection
 }
 
 // Parses a given word (e.g. https://en.wiktionary.org/wiki/hombre).
