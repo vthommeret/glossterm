@@ -542,6 +542,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, link.Text())
 					}
+				case "m", "mention":
+					mention := template.ToMention()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, mention.Text())
+					}
 				case "synonym of", "syn of":
 					synonym := template.ToSynonym()
 					if language.definitionBuffer != nil {

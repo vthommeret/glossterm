@@ -1,6 +1,9 @@
 package tpl
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // https://en.wiktionary.org/wiki/Template:mention
 type Mention struct {
@@ -17,4 +20,18 @@ func (tpl *Template) ToMention() Mention {
 	tpl.toConcrete(reflect.TypeOf(m), reflect.ValueOf(&m))
 	m.Word = toEntryName(m.Lang, m.Word)
 	return m
+}
+
+func (m *Mention) Text() string {
+	var word string
+	if m.Alt != "" {
+		word = m.Alt
+	} else {
+		word = m.Word
+	}
+	var gloss string
+	if m.Gloss != "" {
+		gloss = fmt.Sprintf(" (%s)", m.Gloss)
+	}
+	return fmt.Sprintf("%s%s", word, gloss)
 }
