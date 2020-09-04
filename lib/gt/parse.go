@@ -557,6 +557,26 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, gloss.Text())
 					}
+				case "abbreviation of", "abbr of":
+					abbr := template.ToAbbreviation()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, abbr.Text())
+					}
+				case "acronym of":
+					acronym := template.ToAcronym()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, acronym.Text())
+					}
+				case "contraction of":
+					contraction := template.ToContraction()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, contraction.Text())
+					}
+				case "initialism of", "init of":
+					initialism := template.ToInitialism()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, initialism.Text())
+					}
 				case "non-gloss definition", "non-gloss", "non gloss", "ngd", "n-g":
 					nonGloss := template.ToNonGloss()
 					if language.definitionBuffer != nil {
@@ -581,6 +601,11 @@ Parse:
 					femNoun := template.ToFemNoun()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, femNoun.Text())
+					}
+				case "apocopic form of":
+					apocopic := template.ToApocopic()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, apocopic.Text())
 					}
 				}
 			}
