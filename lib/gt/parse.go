@@ -542,12 +542,17 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, link.Text())
 					}
+				case "synonym of", "syn of":
+					synonym := template.ToSynonym()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, synonym.Text())
+					}
 				case "gloss":
 					gloss := template.ToGloss()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, gloss.Text())
 					}
-				case "n-g", "non-gloss":
+				case "non-gloss definition", "non-gloss", "non gloss", "ngd", "n-g":
 					nonGloss := template.ToNonGloss()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, nonGloss.Text())
@@ -556,6 +561,11 @@ Parse:
 					inflection := template.ToInflection()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, inflection.Text())
+					}
+				case "past participle of":
+					pastParticiple := template.ToPastParticiple()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, pastParticiple.Text())
 					}
 				case "alternative form of", "alt form":
 					altForm := template.ToAltForm()

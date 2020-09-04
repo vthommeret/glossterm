@@ -6,7 +6,7 @@ import (
 
 // https://en.wiktionary.org/wiki/Template:non-gloss
 type NonGloss struct {
-	NonGloss string `json:"text,omitempty" firestore:"text,omitempty"`
+	Definition string `json:"definition,omitempty" firestore:"definition,omitempty"`
 }
 
 func (tpl *Template) ToNonGloss() NonGloss {
@@ -16,5 +16,5 @@ func (tpl *Template) ToNonGloss() NonGloss {
 }
 
 func (ng *NonGloss) Text() string {
-	return ng.NonGloss
+	return ng.Definition
 }
