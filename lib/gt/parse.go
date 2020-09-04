@@ -557,6 +557,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, inflection.Text())
 					}
+				case "alternative form of", "alt form":
+					altForm := template.ToAltForm()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, altForm.Text())
+					}
 				case "feminine noun of":
 					femNoun := template.ToFemNoun()
 					if language.definitionBuffer != nil {
