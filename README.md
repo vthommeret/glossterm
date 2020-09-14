@@ -28,7 +28,7 @@ to install globally available commands that can be run as e.g. `gtdump`.
    compares new index to old index. always use to manually verify parsing changes
 
 1. `gtindex`
-   indexes terms for each word to power autocomplete.
+   incrementally indexes (additions, deletions, updates) words in Firestore
 
 1. `gtquads`
    generates quads for each word to power graph lookups, e.g. find all
