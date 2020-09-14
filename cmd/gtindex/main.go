@@ -61,13 +61,13 @@ func main() {
 		log.Fatalf("Unable to initialize Firebase app: %v", err)
 	}
 
-	// Get new words.
+	// Get new words
 	newWords, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
 
-	// Get preview words
+	// Get previous words
 	previousWords, err := gt.GetWords(previousInput)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", previousInput, err)
