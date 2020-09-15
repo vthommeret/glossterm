@@ -8,16 +8,15 @@ import (
 	"os"
 
 	"github.com/vthommeret/glossterm/lib/gt"
+	"github.com/walle/targz"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/quad"
-	"github.com/walle/targz"
 
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 )
 
-const inputLang = "fr"
 const parentLang = "la"
 
 const defaultInput = "data/words.gob"
@@ -68,87 +67,92 @@ func main() {
 	var quads []quad.Quad
 
 	for _, w := range words {
-		for _, l := range *w.Languages {
-			if l.Code == inputLang {
-				for _, b := range l.Etymology.Borrows {
-					if b.FromLang == parentLang {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"borrowing-from",
-							fmt.Sprintf("%s/%s", b.FromLang, b.FromWord),
-							nil,
-						))
-						fmt.Printf("%s/%s borrowing-from %s/%s\n", l.Code, w.Name, b.FromLang, b.FromWord)
-						quadCount++
+		for _, l := range w.Languages {
+			if _, ok := gt.SourceLangs[l.Code]; ok {
+				if l.Etymology != nil {
+					for _, b := range l.Etymology.Borrows {
+						if b.FromLang == parentLang {
+							quads = append(quads, quad.Make(
+								fmt.Sprintf("%s/%s", l.Code, w.Name),
+								"borrowing-from",
+								fmt.Sprintf("%s/%s", b.FromLang, b.FromWord),
+								nil,
+							))
+							fmt.Printf("%s/%s borrowing-from %s/%s\n", l.Code, w.Name, b.FromLang, b.FromWord)
+							quadCount++
+						}
 					}
-				}
-				for _, d := range l.Etymology.Derived {
-					if d.FromLang == parentLang {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"derived-from",
-							fmt.Sprintf("%s/%s", d.FromLang, d.FromWord),
-							nil,
-						))
-						fmt.Printf("%s/%s derived-from %s/%s\n", l.Code, w.Name, d.FromLang, d.FromWord)
-						quadCount++
+					for _, d := range l.Etymology.Derived {
+						if d.FromLang == parentLang {
+							quads = append(quads, quad.Make(
+								fmt.Sprintf("%s/%s", l.Code, w.Name),
+								"derived-from",
+								fmt.Sprintf("%s/%s", d.FromLang, d.FromWord),
+								nil,
+							))
+							fmt.Printf("%s/%s derived-from %s/%s\n", l.Code, w.Name, d.FromLang, d.FromWord)
+							quadCount++
+						}
 					}
-				}
-				for _, i := range l.Etymology.Inherited {
-					if i.FromLang == parentLang {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"inherited-from",
-							fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
-							nil,
-						))
-						fmt.Printf("%s/%s inherited-from %s/%s\n", l.Code, w.Name, i.FromLang, i.FromWord)
-						quadCount++
+					for _, i := range l.Etymology.Inherited {
+						if i.FromLang == parentLang {
+							quads = append(quads, quad.Make(
+								fmt.Sprintf("%s/%s", l.Code, w.Name),
+								"inherited-from",
+								fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
+								nil,
+							))
+							fmt.Printf("%s/%s inherited-from %s/%s\n", l.Code, w.Name, i.FromLang, i.FromWord)
+							quadCount++
+						}
 					}
-				}
-				for _, m := range l.Etymology.Mentions {
-					if m.Lang == parentLang {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"mentions",
-							fmt.Sprintf("%s/%s", m.Lang, m.Word),
-							nil,
-						))
-						fmt.Printf("%s/%s mentions %s/%s\n", l.Code, w.Name, m.Lang, m.Word)
-						quadCount++
+					for _, m := range l.Etymology.Mentions {
+						if m.Lang == parentLang {
+							quads = append(quads, quad.Make(
+								fmt.Sprintf("%s/%s", l.Code, w.Name),
+								"mentions",
+								fmt.Sprintf("%s/%s", m.Lang, m.Word),
+								nil,
+							))
+							fmt.Printf("%s/%s mentions %s/%s\n", l.Code, w.Name, m.Lang, m.Word)
+							quadCount++
+						}
 					}
 				}
 			} else if l.Code == parentLang {
-				for _, c := range l.Etymology.Cognates {
-					if c.Lang != inputLang {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"cognate",
-							fmt.Sprintf("%s/%s", c.Lang, c.Word),
-							nil,
-						))
-						fmt.Printf("%s/%s cognate %s/%s\n", l.Code, w.Name, c.Lang, c.Word)
-						quadCount++
-					}
-				}
 
-				for _, s := range l.Etymology.Suffixes {
-					if s.Lang != inputLang {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"suffix",
-							fmt.Sprintf("%s/%s", s.Lang, s.Root),
-							nil,
-						))
-						fmt.Printf("%s/%s suffix %s/%s\n", l.Code, w.Name, s.Lang, s.Root)
-						quadCount++
+				if l.Etymology != nil {
+					for _, c := range l.Etymology.Cognates {
+						if _, ok := gt.SourceLangs[c.Lang]; ok {
+							quads = append(quads, quad.Make(
+								fmt.Sprintf("%s/%s", l.Code, w.Name),
+								"cognate",
+								fmt.Sprintf("%s/%s", c.Lang, c.Word),
+								nil,
+							))
+							fmt.Printf("%s/%s cognate %s/%s\n", l.Code, w.Name, c.Lang, c.Word)
+							quadCount++
+						}
+					}
+
+					for _, s := range l.Etymology.Suffixes {
+						if _, ok := gt.SourceLangs[s.Lang]; ok {
+							quads = append(quads, quad.Make(
+								fmt.Sprintf("%s/%s", l.Code, w.Name),
+								"suffix",
+								fmt.Sprintf("%s/%s", s.Lang, s.Root),
+								nil,
+							))
+							fmt.Printf("%s/%s suffix %s/%s\n", l.Code, w.Name, s.Lang, s.Root)
+							quadCount++
+						}
 					}
 				}
 
 				// Map both Links and Descendants to "descendant" for graph search
 
 				for _, ln := range l.Links {
-					if ln.Lang != inputLang {
+					if _, ok := gt.SourceLangs[ln.Lang]; ok {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"descendant",
@@ -160,7 +164,7 @@ func main() {
 					}
 				}
 				for _, d := range l.Descendants {
-					if d.Lang != inputLang {
+					if _, ok := gt.SourceLangs[d.Lang]; ok {
 						quads = append(quads, quad.Make(
 							fmt.Sprintf("%s/%s", l.Code, w.Name),
 							"descendant",
@@ -176,8 +180,6 @@ func main() {
 		}
 		count++
 	}
-
-	return
 
 	// Add quads
 	log.Printf("Storing quads.")

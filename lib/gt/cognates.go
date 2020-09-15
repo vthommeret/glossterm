@@ -3,19 +3,21 @@ package gt
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph/path"
 	"github.com/cayleygraph/quad"
 )
 
-type Descendant struct {
+type Cognate struct {
 	Word string
 	From string
 }
 
-func GetDescendants(graph *cayley.Handle, lang string, word string) []Descendant {
-	w := quad.String(fmt.Sprintf("%s/%s", lang, word))
+func GetCognates(graph *cayley.Handle, lang string, word string) []*Cognate {
+	prefix := fmt.Sprintf("%s/", lang)
+	w := quad.String(prefix + word)
 
 	s := cayley.StartPath(graph, w)
 	ps := findParents(s).Tag("parent")
@@ -29,10 +31,13 @@ func GetDescendants(graph *cayley.Handle, lang string, word string) []Descendant
 		log.Fatalf("Unable to execute query: %s", err)
 	}
 
-	ds := []Descendant{}
+	ds := []*Cognate{}
 
 	for i, r := range rs {
-		ds = append(ds, Descendant{Word: r, From: ts[i]})
+		if strings.HasPrefix(r, prefix) {
+			continue
+		}
+		ds = append(ds, &Cognate{Word: r, From: ts[i]})
 	}
 
 	return ds

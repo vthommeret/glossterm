@@ -58,7 +58,7 @@ func ShouldIndex(word *Word) bool {
 
 	// Require definitions
 	hasDefinitions := false
-	for _, l := range *word.Languages {
+	for _, l := range word.Languages {
 		if l.Definitions != nil {
 			hasDefinitions = true
 			break

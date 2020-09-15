@@ -11,7 +11,7 @@ import (
 
 type Word struct {
 	Name      string               `json:"name"`
-	Languages *map[string]Language `json:"languages"`
+	Languages map[string]*Language `json:"languages"`
 	Indexed   *time.Time           `json:"indexed,omitempty"`
 }
 
@@ -22,6 +22,8 @@ type Language struct {
 	Links           []tpl.Link       `json:"links,omitempty" firestore:"links,omitempty"`
 	Descendants     []tpl.Descendant `json:"descendants,omitempty" firestore:"descendants,omitempty"`
 	DescendantTrees []tpl.EtymTree   `json:"descendantTrees,omitempty" firestore:"descendantTrees,omitempty"`
+	Cognates        []*Cognate       `json:"cognates,omitempty" firestore:"cognates,omitempty"`
+	FetchedCognates *time.Time       `json:"fetchedCognates,omitempty" firestore:"fetchedCognates,omitempty"`
 
 	section      sectionType
 	subSection   sectionType
@@ -307,9 +309,9 @@ Parse:
 				}
 				if !language.IsEmpty() {
 					if w.Languages == nil {
-						w.Languages = &map[string]Language{}
+						w.Languages = map[string]*Language{}
 					}
-					(*w.Languages)[language.Code] = *language
+					w.Languages[language.Code] = language
 				}
 			}
 			break Parse
@@ -326,9 +328,9 @@ Parse:
 			} else if i.depth == 2 {
 				if language != nil && !language.IsEmpty() {
 					if w.Languages == nil {
-						w.Languages = &map[string]Language{}
+						w.Languages = map[string]*Language{}
 					}
-					(*w.Languages)[language.Code] = *language
+					w.Languages[language.Code] = language
 				}
 				language = &Language{sectionDepth: -1}
 				inLanguageHeader = true
