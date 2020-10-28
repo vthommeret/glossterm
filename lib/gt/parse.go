@@ -23,7 +23,6 @@ type Language struct {
 	Descendants     []tpl.Descendant `json:"descendants,omitempty" firestore:"descendants,omitempty"`
 	DescendantTrees []tpl.EtymTree   `json:"descendantTrees,omitempty" firestore:"descendantTrees,omitempty"`
 	Cognates        []*Cognate       `json:"cognates,omitempty" firestore:"cognates,omitempty"`
-	FetchedCognates *time.Time       `json:"fetchedCognates,omitempty" firestore:"fetchedCognates,omitempty"`
 
 	section      sectionType
 	subSection   sectionType

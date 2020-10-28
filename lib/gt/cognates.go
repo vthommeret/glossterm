@@ -11,8 +11,8 @@ import (
 )
 
 type Cognate struct {
-	Word string
-	From string
+	Word string `json:"word" firestore:"word"`
+	From string `json:"from" firestore:"from"`
 }
 
 func GetCognates(graph *cayley.Handle, lang string, word string) []*Cognate {

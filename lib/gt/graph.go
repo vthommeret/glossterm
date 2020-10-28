@@ -1,6 +1,7 @@
 package gt
 
 import (
+	"bufio"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -11,10 +12,43 @@ import (
 	"github.com/cayleygraph/cayley"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/quad/nquads"
 
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/cayley/graph/path"
 )
+
+// GetGraphNquads returns graph from nquads file
+func GetGraphNquads(path string) (*cayley.Handle, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatalf("Unable to open %s input: %s", path, err)
+	}
+
+	r := bufio.NewReader(f)
+	nr := nquads.NewReader(r, false)
+
+	store, err := cayley.NewMemoryGraph()
+	if err != nil {
+		log.Fatalf("Unable to create memory store: %s", err)
+	}
+
+	for {
+		q, err := nr.ReadQuad()
+		if err != nil {
+			if err != io.EOF {
+				log.Fatalf("Unable to read quad: %s", err)
+			}
+			break
+		}
+		if !q.IsValid() {
+			fmt.Printf("Got invalid quad: %+v\n", q)
+		}
+		store.AddQuad(q)
+	}
+
+	return store, nil
+}
 
 // GetGraph returns graph either from path or compressed path.
 func GetGraph(path string) (*cayley.Handle, error) {

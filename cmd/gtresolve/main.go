@@ -43,7 +43,7 @@ func main() {
 	resolved := 0
 	for _, w := range words {
 		langs := w.Languages
-		for _, l := range *langs {
+		for _, l := range langs {
 			if l.DescendantTrees != nil {
 				for _, t := range l.DescendantTrees {
 					n := t.ToEntryName()

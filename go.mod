@@ -3,17 +3,22 @@ module github.com/vthommeret/glossterm
 go 1.14
 
 require (
-	cloud.google.com/go v0.37.4
+	cloud.google.com/go v0.66.0 // indirect
+	cloud.google.com/go/firestore v1.3.0
+	cloud.google.com/go/storage v1.11.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
+	github.com/apache/beam v2.24.0+incompatible
 	github.com/blevesearch/segment v0.9.0
 	github.com/cayleygraph/cayley v0.7.7
 	github.com/cayleygraph/quad v1.1.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/go-cmp v0.5.2
-	github.com/montanaflynn/stats v0.6.3
-	github.com/walle/targz v0.0.0-20140417120357-57fe4206da5a
-	golang.org/x/net v0.0.0-20190628185345-da137c7871d7
-	golang.org/x/text v0.3.2
-	google.golang.org/api v0.3.2
-	gotest.tools v2.2.0+incompatible
+	github.com/spf13/cobra v1.0.0 // indirect
+	golang.org/x/net v0.0.0-20200904194848-62affa334b73
+	golang.org/x/sys v0.0.0-20200917073148-efd3b9a0ff20 // indirect
+	golang.org/x/text v0.3.3
+	golang.org/x/tools v0.0.0-20200917221617-d56e4e40bc9d // indirect
+	google.golang.org/api v0.32.0
+	google.golang.org/genproto v0.0.0-20200917134801-bb4cff56e0d0 // indirect
+	google.golang.org/grpc v1.32.0 // indirect
 )

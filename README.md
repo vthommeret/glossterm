@@ -27,15 +27,18 @@ to install globally available commands that can be run as e.g. `gtdump`.
 1. `gtcompare`
    compares new index to old index. always use to manually verify parsing changes
 
-1. `gtindex`
-   incrementally indexes (additions, deletions, updates) words in Firestore
-
 1. `gtquads`
    generates quads for each word to power graph lookups, e.g. find all
    descendants for the Latin roots of a given word.
 
-Once you've run those commands, you can run `gtweb` which will launch
-the web app.
+1. `gtbeam`
+   fetches cognates in parallel using Apache Beam local runner.
+
+1. `gtcognates`
+   inlines cognates from `gtbeam` into words.gob
+
+1. `gtindex`
+   incrementally indexes (additions, deletions, updates) words in Firestore
 
 ## Debugging a single word
 

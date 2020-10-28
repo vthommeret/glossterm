@@ -2,9 +2,12 @@
 *.xml.bz2
 *.txt
 *.gob
+*.nq
 *.lex
 *.parse
 *.bleve
 *.db
+*.jsonl
 .DS_Store
+data/previous
 cognate-service-account.json

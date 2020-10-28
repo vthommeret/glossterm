@@ -248,5 +248,5 @@ func commitWords(wg *sync.WaitGroup, words map[string]*gt.Word, added, addTotal,
 	if err != nil {
 		log.Fatalf("Unable to write and compressed words %s: %s", output, err)
 	}
-	fmt.Printf("\rAdded %d/%d words; updated %d/%d words; removed %d/%d words", added, addTotal, updated, updateTotal, removed, removeTotal)
+	fmt.Printf("\rAdded %d/%d words; updated %d/%d words; removed %d/%d words.", added, addTotal, updated, updateTotal, removed, removeTotal)
 }

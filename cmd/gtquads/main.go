@@ -1,62 +1,40 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
 	"github.com/vthommeret/glossterm/lib/gt"
-	"github.com/walle/targz"
 
-	"github.com/cayleygraph/cayley"
-	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/quad"
-
-	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
+	"github.com/cayleygraph/quad/nquads"
 )
 
 const parentLang = "la"
 
 const defaultInput = "data/words.gob"
-const defaultOutput = "data/graph.db"
+const defaultOutput = "data/words.nq"
+const defaultVerbose = false
 
 var input string
 var output string
+var verbose bool
 
 func init() {
 	flag.StringVar(&input, "i", defaultInput, "Input file (gob format)")
-	flag.StringVar(&output, "o", defaultOutput, "Output folder (boltdb format)")
+	flag.StringVar(&output, "o", defaultOutput, "Output file (nquads format)")
+	flag.BoolVar(&verbose, "v", defaultVerbose, "Verbose")
 	flag.Parse()
 }
 
 func main() {
-	outputCompressed := fmt.Sprintf("%s.tar.gz", output)
-
 	// Get words.
 	words, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", input, err)
-	}
-
-	tmpDir, err := ioutil.TempDir("", "words-graph")
-	if err != nil {
-		log.Fatalf("Unable to create temp directory: %s", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	// Initialize the database
-	err = graph.InitQuadStore("bolt", tmpDir, nil)
-	if err != nil {
-		log.Fatalf("Unable to init quad store: %s", err)
-	}
-	graph.IgnoreDuplicates = true
-
-	// Open and use the database
-	store, err := cayley.NewGraph("bolt", tmpDir, nil)
-	if err != nil {
-		log.Fatalf("Unable to open %q output: %s", tmpDir, err)
 	}
 
 	// Prepare quads
@@ -78,7 +56,9 @@ func main() {
 								fmt.Sprintf("%s/%s", b.FromLang, b.FromWord),
 								nil,
 							))
-							fmt.Printf("%s/%s borrowing-from %s/%s\n", l.Code, w.Name, b.FromLang, b.FromWord)
+							if verbose {
+								fmt.Printf("%s/%s borrowing-from %s/%s\n", l.Code, w.Name, b.FromLang, b.FromWord)
+							}
 							quadCount++
 						}
 					}
@@ -90,7 +70,9 @@ func main() {
 								fmt.Sprintf("%s/%s", d.FromLang, d.FromWord),
 								nil,
 							))
-							fmt.Printf("%s/%s derived-from %s/%s\n", l.Code, w.Name, d.FromLang, d.FromWord)
+							if verbose {
+								fmt.Printf("%s/%s derived-from %s/%s\n", l.Code, w.Name, d.FromLang, d.FromWord)
+							}
 							quadCount++
 						}
 					}
@@ -102,7 +84,9 @@ func main() {
 								fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
 								nil,
 							))
-							fmt.Printf("%s/%s inherited-from %s/%s\n", l.Code, w.Name, i.FromLang, i.FromWord)
+							if verbose {
+								fmt.Printf("%s/%s inherited-from %s/%s\n", l.Code, w.Name, i.FromLang, i.FromWord)
+							}
 							quadCount++
 						}
 					}
@@ -114,7 +98,9 @@ func main() {
 								fmt.Sprintf("%s/%s", m.Lang, m.Word),
 								nil,
 							))
-							fmt.Printf("%s/%s mentions %s/%s\n", l.Code, w.Name, m.Lang, m.Word)
+							if verbose {
+								fmt.Printf("%s/%s mentions %s/%s\n", l.Code, w.Name, m.Lang, m.Word)
+							}
 							quadCount++
 						}
 					}
@@ -130,7 +116,9 @@ func main() {
 								fmt.Sprintf("%s/%s", c.Lang, c.Word),
 								nil,
 							))
-							fmt.Printf("%s/%s cognate %s/%s\n", l.Code, w.Name, c.Lang, c.Word)
+							if verbose {
+								fmt.Printf("%s/%s cognate %s/%s\n", l.Code, w.Name, c.Lang, c.Word)
+							}
 							quadCount++
 						}
 					}
@@ -143,7 +131,9 @@ func main() {
 								fmt.Sprintf("%s/%s", s.Lang, s.Root),
 								nil,
 							))
-							fmt.Printf("%s/%s suffix %s/%s\n", l.Code, w.Name, s.Lang, s.Root)
+							if verbose {
+								fmt.Printf("%s/%s suffix %s/%s\n", l.Code, w.Name, s.Lang, s.Root)
+							}
 							quadCount++
 						}
 					}
@@ -159,7 +149,9 @@ func main() {
 							fmt.Sprintf("%s/%s", ln.Lang, ln.Word),
 							nil,
 						))
-						fmt.Printf("%s/%s descendant (link) %s/%s\n", l.Code, w.Name, ln.Lang, ln.Word)
+						if verbose {
+							fmt.Printf("%s/%s descendant (link) %s/%s\n", l.Code, w.Name, ln.Lang, ln.Word)
+						}
 						quadCount++
 					}
 				}
@@ -171,7 +163,9 @@ func main() {
 							fmt.Sprintf("%s/%s", d.Lang, d.Word),
 							nil,
 						))
-						fmt.Printf("%s/%s descendant %s/%s\n", l.Code, w.Name, d.Lang, d.Word)
+						if verbose {
+							fmt.Printf("%s/%s descendant %s/%s\n", l.Code, w.Name, d.Lang, d.Word)
+						}
 						quadCount++
 					}
 				}
@@ -181,24 +175,23 @@ func main() {
 		count++
 	}
 
-	// Add quads
-	log.Printf("Storing quads.")
-	err = store.AddQuadSet(quads)
+	// Create nquads file
+
+	f, err := os.Create(output)
 	if err != nil {
-		log.Fatalf("Unable to add quads: %s", err)
+		log.Fatalf("Unable to create nquads file: %s", err)
 	}
 
-	// Move temp db to output.
-	log.Printf("Moving tmp database to data dir.")
-	err = os.Rename(tmpDir, output)
-	if err != nil {
-		log.Fatalf("Unable to move tmp database to output: %s", err)
-	}
+	// Write nquads file
 
-	err = targz.Compress(output, outputCompressed)
+	w := bufio.NewWriter(f)
+	nw := nquads.NewWriter(w)
+	_, err = nw.WriteQuads(quads)
 	if err != nil {
-		log.Fatalf("Unable to tar and gzip db: %s", err)
+		log.Fatalf("Error writing quads: %s", err)
 	}
+	w.Flush()
+	f.Close()
 
-	log.Printf("Read %d words, wrote %d quads.", count, quadCount)
+	fmt.Printf("Read %d words, wrote %d quads.", count, quadCount)
 }
