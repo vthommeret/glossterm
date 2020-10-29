@@ -24,9 +24,6 @@ to install globally available commands that can be run as e.g. `gtdump`.
    reads words.gob and looks up DescendantTrees references in
    descendants.gob, and inlines them.
 
-1. `gtcompare`
-   compares new index to old index. always use to manually verify parsing changes
-
 1. `gtquads`
    generates quads for each word to power graph lookups, e.g. find all
    descendants for the Latin roots of a given word.
@@ -36,6 +33,9 @@ to install globally available commands that can be run as e.g. `gtdump`.
 
 1. `gtcognates`
    inlines cognates from `gtbeam` into words.gob
+
+1. `gtcompare`
+   compares new index to old index. always use to manually verify parsing changes
 
 1. `gtindex`
    incrementally indexes (additions, deletions, updates) words in Firestore
