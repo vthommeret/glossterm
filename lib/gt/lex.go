@@ -422,6 +422,12 @@ Loop:
 			if lexed, nextFn := l.lexListItem(orderedListItemStart, itemOrderedListItemStart, itemListItemEnd, itemOrderedDefinitionStart, unorderedListItemStart, itemUnorderedOrderedStart); lexed {
 				return nextFn
 			}
+
+			// If newline without header or another list item, end existing list item
+			if l.inListItem {
+				l.inListItem = false
+				l.emit(itemListItemEnd)
+			}
 		}
 
 		for i := headers; i > 0; i-- {
