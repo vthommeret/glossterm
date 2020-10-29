@@ -11,26 +11,31 @@ import (
 	"github.com/vthommeret/glossterm/lib/gt"
 )
 
-const defaultInput = "data/cognates.jsonl"
+const defaultInput = "data/words.gob"
+const defaultCognatesInput = "data/cognates.jsonl"
 const defaultOutput = "data/words.gob"
 
 var input string
+var cognatesInput string
 var output string
 
 func init() {
-	flag.StringVar(&input, "i", defaultInput, "Input file (json line format)")
+	flag.StringVar(&input, "i", defaultInput, "Input file (gob format)")
+	flag.StringVar(&cognatesInput, "ci", defaultCognatesInput, "Cognates input file (json line format)")
 	flag.StringVar(&output, "o", defaultOutput, "Output file (gob format)")
 	flag.Parse()
 }
 
 func main() {
-	f, err := os.Open(input)
+	// Read all cognates
+
+	f, err := os.Open(cognatesInput)
 	if err != nil {
-		log.Fatalf("Unable to open input file: %s, %s", input, err)
+		log.Fatalf("Unable to open cognates input file: %s, %s", cognatesInput, err)
 	}
 	defer f.Close()
 
-	words := map[string]*gt.Word{}
+	cognateWords := map[string]*gt.Word{}
 	count := 0
 
 	scanner := bufio.NewScanner(f)
@@ -39,13 +44,30 @@ func main() {
 		if err = json.Unmarshal(scanner.Bytes(), &word); err != nil {
 			log.Fatalf("Unable to read JSON: %s", err)
 		}
-		words[word.Name] = word
+		cognateWords[word.Name] = word
 		count++
 	}
 
-	fmt.Printf("Writing %d words.\n", count)
+	// Resolve cognates
 
-	err = gt.WriteGob(output, words, true, false)
+	wordMap, err := gt.GetWords(input)
+	if err != nil {
+		log.Fatalf("Unable to get %q words: %s", input, err)
+	}
+
+	for name, word := range wordMap {
+		if cognateWord, ok := cognateWords[name]; ok {
+			for code, lang := range cognateWord.Languages {
+				if _, ok = word.Languages[code]; ok {
+					wordMap[name].Languages[code].Cognates = lang.Cognates
+				}
+			}
+		}
+	}
+
+	fmt.Printf("Writing cognates for %d words.\n", count)
+
+	err = gt.WriteGob(output, wordMap, true, false)
 	if err != nil {
 		log.Fatalf("Unable to write and compress %s: %s", output, err)
 	}

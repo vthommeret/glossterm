@@ -32,20 +32,39 @@ func init() {
 	beam.Init()
 }
 
-func cognateFn(word gt.Word) string {
+func cognateFn(word gt.Word, emit func(string)) {
+	langCognates := map[string]*gt.Language{}
+
 	for lang := range word.Languages {
 		if _, ok := gt.SourceLangs[lang]; !ok {
 			continue
 		}
-		word.Languages[lang].Cognates = gt.GetCognates(graph, lang, word.Name)
+		cognates := gt.GetCognates(graph, lang, word.Name)
+		if len(cognates) == 0 {
+			continue
+		}
+		langCognates[lang] = &gt.Language{
+			Code:     lang,
+			Cognates: cognates,
+		}
 	}
 
-	b, err := json.Marshal(word)
+	if len(langCognates) == 0 {
+		return
+	}
+
+	// Only write out cognates for each language
+	wordCognates := gt.Word{
+		Name:      word.Name,
+		Languages: langCognates,
+	}
+
+	b, err := json.Marshal(wordCognates)
 	if err != nil {
 		log.Fatalf("Unable to marshal JSON: %s", err)
 	}
 
-	return string(b)
+	emit(string(b))
 }
 
 func main() {
