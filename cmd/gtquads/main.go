@@ -46,6 +46,8 @@ func main() {
 
 	for _, w := range words {
 		for _, l := range w.Languages {
+
+			// Latin ancestors
 			if _, ok := gt.SourceLangs[l.Code]; ok {
 				if l.Etymology != nil {
 					for _, b := range l.Etymology.Borrows {
@@ -105,6 +107,8 @@ func main() {
 						}
 					}
 				}
+
+				// Latin descendants
 			} else if l.Code == parentLang {
 
 				if l.Etymology != nil {
