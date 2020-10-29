@@ -600,6 +600,7 @@ Parse:
 					pastParticiple := template.ToPastParticiple()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, pastParticiple.Text())
+						language.definitionRoot = &pastParticiple.Word
 					}
 				case "alternative form of", "alt form":
 					altForm := template.ToAltForm()
