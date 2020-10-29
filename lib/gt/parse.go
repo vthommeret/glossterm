@@ -34,21 +34,27 @@ type Language struct {
 	inListItemSublist    bool
 
 	definitionBuffer TextBuffer
+	definitionRoot   *string
 }
 
 type Definitions struct {
-	Nouns         []string `json:"nouns,omitempty" firestore:"nouns,omitempty"`
-	Adjectives    []string `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
-	Verbs         []string `json:"verbs,omitempty" firestore:"verbs,omitempty"`
-	Adverbs       []string `json:"adverbs,omitempty" firestore:"adverbs,omitempty"`
-	Articles      []string `json:"articles,omitempty" firestore:"articles,omitempty"`
-	Prepositions  []string `json:"prepositions,omitempty" firestore:"prepositions,omitempty"`
-	Pronouns      []string `json:"pronouns,omitempty" firestore:"pronouns,omitempty"`
-	Conjunctions  []string `json:"conjunctions,omitempty" firestore:"conjunctions,omitempty"`
-	Interjections []string `json:"interjections,omitempty" firestore:"interjections,omitempty"`
-	Numerals      []string `json:"numerals,omitempty" firestore:"numerals,omitempty"`
-	Particles     []string `json:"particles,omitempty" firestore:"particles,omitempty"`
-	Determiners   []string `json:"determiners,omitempty" firestore:"determiners,omitempty"`
+	Nouns         []Definition `json:"nouns,omitempty" firestore:"nouns,omitempty"`
+	Adjectives    []Definition `json:"adjectives,omitempty" firestore:"adjectives,omitempty"`
+	Verbs         []Definition `json:"verbs,omitempty" firestore:"verbs,omitempty"`
+	Adverbs       []Definition `json:"adverbs,omitempty" firestore:"adverbs,omitempty"`
+	Articles      []Definition `json:"articles,omitempty" firestore:"articles,omitempty"`
+	Prepositions  []Definition `json:"prepositions,omitempty" firestore:"prepositions,omitempty"`
+	Pronouns      []Definition `json:"pronouns,omitempty" firestore:"pronouns,omitempty"`
+	Conjunctions  []Definition `json:"conjunctions,omitempty" firestore:"conjunctions,omitempty"`
+	Interjections []Definition `json:"interjections,omitempty" firestore:"interjections,omitempty"`
+	Numerals      []Definition `json:"numerals,omitempty" firestore:"numerals,omitempty"`
+	Particles     []Definition `json:"particles,omitempty" firestore:"particles,omitempty"`
+	Determiners   []Definition `json:"determiners,omitempty" firestore:"determiners,omitempty"`
+}
+
+type Definition struct {
+	Text string  `json:"text" firestore:"text"`
+	Root *string `json:"root,omitempty" firestore:"root,omitempty"`
 }
 
 type Etymology struct {
@@ -141,6 +147,7 @@ func (l *Language) IsEmpty() bool {
 
 func (l *Language) flushDefinition() {
 	definition := strings.TrimSpace(strings.Join(l.definitionBuffer, ""))
+	root := l.definitionRoot
 	if definition != "" {
 		switch l.section {
 		case nounSection:
@@ -148,76 +155,77 @@ func (l *Language) flushDefinition() {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Nouns =
-				append(l.Definitions.Nouns, definition)
+				append(l.Definitions.Nouns, Definition{Text: definition, Root: root})
 		case adjectiveSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Adjectives =
-				append(l.Definitions.Adjectives, definition)
+				append(l.Definitions.Adjectives, Definition{Text: definition, Root: root})
 		case verbSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Verbs =
-				append(l.Definitions.Verbs, definition)
+				append(l.Definitions.Verbs, Definition{Text: definition, Root: root})
 		case adverbSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Adverbs =
-				append(l.Definitions.Adverbs, definition)
+				append(l.Definitions.Adverbs, Definition{Text: definition, Root: root})
 		case articleSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Articles =
-				append(l.Definitions.Articles, definition)
+				append(l.Definitions.Articles, Definition{Text: definition, Root: root})
 		case prepositionSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Prepositions =
-				append(l.Definitions.Prepositions, definition)
+				append(l.Definitions.Prepositions, Definition{Text: definition, Root: root})
 		case pronounSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Pronouns =
-				append(l.Definitions.Pronouns, definition)
+				append(l.Definitions.Pronouns, Definition{Text: definition, Root: root})
 		case conjunctionSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Conjunctions =
-				append(l.Definitions.Conjunctions, definition)
+				append(l.Definitions.Conjunctions, Definition{Text: definition, Root: root})
 		case interjectionSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Interjections =
-				append(l.Definitions.Interjections, definition)
+				append(l.Definitions.Interjections, Definition{Text: definition, Root: root})
 		case numeralSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Numerals =
-				append(l.Definitions.Numerals, definition)
+				append(l.Definitions.Numerals, Definition{Text: definition, Root: root})
 		case particleSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Particles =
-				append(l.Definitions.Particles, definition)
+				append(l.Definitions.Particles, Definition{Text: definition, Root: root})
 		case determinerSection:
 			if l.Definitions == nil {
 				l.Definitions = &Definitions{}
 			}
 			l.Definitions.Determiners =
-				append(l.Definitions.Determiners, definition)
+				append(l.Definitions.Determiners, Definition{Text: definition, Root: root})
 		}
 	}
 	l.definitionBuffer = nil
+	l.definitionRoot = nil
 	l.inListItemDefinition = false
 	l.inListItemSublist = false
 }
