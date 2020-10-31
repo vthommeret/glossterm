@@ -34,7 +34,7 @@ type Language struct {
 	inListItemSublist    bool
 
 	definitionBuffer TextBuffer
-	definitionRoot   *string
+	definitionRoot   *RootWord
 }
 
 type Definitions struct {
@@ -53,8 +53,13 @@ type Definitions struct {
 }
 
 type Definition struct {
-	Text string  `json:"text" firestore:"text"`
-	Root *string `json:"root,omitempty" firestore:"root,omitempty"`
+	Text string    `json:"text" firestore:"text"`
+	Root *RootWord `json:"root,omitempty" firestore:"root,omitempty"`
+}
+
+type RootWord struct {
+	Lang string `json:"lang" firestore:"lang"`
+	Name string `json:"name" firestore:"name"`
 }
 
 type Etymology struct {
@@ -600,7 +605,7 @@ Parse:
 					pastParticiple := template.ToPastParticiple()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, pastParticiple.Text())
-						language.definitionRoot = &pastParticiple.Word
+						language.definitionRoot = &RootWord{Lang: pastParticiple.Lang, Name: pastParticiple.Word}
 					}
 				case "alternative form of", "alt form":
 					altForm := template.ToAltForm()
