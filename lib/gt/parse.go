@@ -33,8 +33,15 @@ type Language struct {
 	inListItemDefinition bool
 	inListItemSublist    bool
 
+	linkBuffer *LinkBuffer
+
 	definitionBuffer TextBuffer
 	definitionRoot   *RootWord
+}
+
+type LinkBuffer struct {
+	Link string
+	Name *string
 }
 
 type Definitions struct {
@@ -235,6 +242,10 @@ func (l *Language) flushDefinition() {
 	l.inListItemSublist = false
 }
 
+func (l *Language) shouldCaptureLink() bool {
+	return l.definitionBuffer != nil && l.listItemDepth == 1 && !l.inListItemDefinition && !l.inListItemSublist
+}
+
 type sectionType int
 
 const (
@@ -392,13 +403,32 @@ Parse:
 			if language != nil && language.definitionBuffer != nil {
 				language.flushDefinition()
 			}
+		case itemLeftLink:
+			if language != nil && language.shouldCaptureLink() {
+				language.linkBuffer = &LinkBuffer{}
+			}
 		case itemLink:
 			if language != nil {
 				if language.listItem != nil {
 					language.listItem.Links = append(language.listItem.Links, i.val)
-				} else if language.definitionBuffer != nil && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist && !strings.HasPrefix(i.val, linkCategoryPrefix) && !strings.HasPrefix(i.val, linkReferencePrefix) {
-					language.definitionBuffer = append(language.definitionBuffer, i.val)
+				} else if language.shouldCaptureLink() {
+					language.linkBuffer.Link = i.val
 				}
+			}
+		case itemLinkName:
+			if language != nil && language.shouldCaptureLink() {
+				language.linkBuffer.Name = &i.val
+			}
+		case itemRightLink:
+			if language != nil && language.shouldCaptureLink() {
+				var link string
+				if language.linkBuffer.Name != nil {
+					link = *language.linkBuffer.Name
+				} else {
+					link = language.linkBuffer.Link
+				}
+				language.definitionBuffer = append(language.definitionBuffer, link)
+				language.linkBuffer = nil
 			}
 		case itemText:
 			// TODO: More intelligently handle whitespace in lexer. Emit newline
