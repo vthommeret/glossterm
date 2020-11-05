@@ -2,6 +2,7 @@ package gt
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -271,6 +272,8 @@ const (
 const linkCategoryPrefix = "Category:"
 const linkReferencePrefix = "#"
 
+var wordTypeRegex *regexp.Regexp
+
 var wordTypeMap = map[string]sectionType{
 	"Noun":         nounSection,
 	"Adjective":    adjectiveSection,
@@ -292,6 +295,10 @@ type ListItem struct {
 }
 
 type TextBuffer []string
+
+func init() {
+	wordTypeRegex = regexp.MustCompile("^([^0-9]+)(?: [0-9]+)?$")
+}
 
 func definitionSection(section sectionType) bool {
 	return section == nounSection || section == adjectiveSection || section == verbSection || section == adverbSection || section == articleSection || section == prepositionSection || section == pronounSection || section == conjunctionSection || section == interjectionSection || section == numeralSection || section == particleSection || section == determinerSection
@@ -452,16 +459,26 @@ Parse:
 			} else if inSectionHeader && language != nil {
 				if language.sectionDepth == 2 && strings.HasPrefix(i.val, "Etymology") {
 					language.section = etymologySection
-				} else if wordSection, ok := wordTypeMap[i.val]; (language.sectionDepth == 2 || language.sectionDepth == 3) && ok {
-					language.section = wordSection
 				} else {
-					// This will exclude subsections named "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
-					language.section = unknownSection
+					sectionMatches := wordTypeRegex.FindStringSubmatch(i.val)
+					var setWordSection = false
 
-					if language.sectionDepth >= 3 && i.val == "Descendants" {
-						language.subSection = descendantsSection
-					} else {
-						language.subSection = unknownSection
+					if len(sectionMatches) > 1 {
+						if wordSection, ok := wordTypeMap[sectionMatches[1]]; (language.sectionDepth == 2 || language.sectionDepth == 3) && ok {
+							language.section = wordSection
+							setWordSection = true
+						}
+					}
+
+					if !setWordSection {
+						// This will exclude subsections named "Etymology" for now, e.g. https://en.wiktionary.org/wiki/taco#Noun_4
+						language.section = unknownSection
+
+						if language.sectionDepth >= 3 && i.val == "Descendants" {
+							language.subSection = descendantsSection
+						} else {
+							language.subSection = unknownSection
+						}
 					}
 				}
 			} else if language != nil && definitionSection(language.section) && language.listItemDepth == 1 && !language.inListItemDefinition && !language.inListItemSublist {
