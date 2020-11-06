@@ -30,11 +30,53 @@ func init() {
 	flag.Parse()
 }
 
+func findRoots(rootMap map[string]string, word string, allDefns [][]gt.Definition) {
+	for _, defns := range allDefns {
+		for _, defn := range defns {
+			if defn.Root != nil {
+				rootMap[word] = defn.Root.Name
+			}
+		}
+	}
+}
+
+func createQuads(rootMap map[string]string, typ, lang, word, fromLang, fromWord string) []quad.Quad {
+	var quads []quad.Quad
+	if root, ok := rootMap[fromWord]; ok {
+		quads = append(quads, createQuad(typ, lang, word, fromLang, root))
+	}
+	quads = append(quads, createQuad(typ, lang, word, fromLang, fromWord))
+	return quads
+}
+
+func createQuad(typ, lang, word, fromLang, fromWord string) quad.Quad {
+	q := quad.Make(
+		fmt.Sprintf("%s/%s", lang, word),
+		typ,
+		fmt.Sprintf("%s/%s", fromLang, fromWord),
+		nil,
+	)
+	if verbose {
+		fmt.Printf("%s/%s %s %s/%s\n", lang, word, typ, fromLang, fromWord)
+	}
+	return q
+}
+
 func main() {
 	// Get words.
 	words, err := gt.GetWords(input)
 	if err != nil {
 		log.Fatalf("Unable to get %q words: %s", input, err)
+	}
+
+	rootMap := map[string]string{}
+
+	for _, w := range words {
+		if lang, ok := w.Languages[parentLang]; ok {
+			if lang.Definitions != nil {
+				findRoots(rootMap, w.Name, lang.AllDefinitions())
+			}
+		}
 	}
 
 	// Prepare quads
@@ -52,58 +94,30 @@ func main() {
 				if l.Etymology != nil {
 					for _, b := range l.Etymology.Borrows {
 						if b.FromLang == parentLang {
-							quads = append(quads, quad.Make(
-								fmt.Sprintf("%s/%s", l.Code, w.Name),
-								"borrowing-from",
-								fmt.Sprintf("%s/%s", b.FromLang, b.FromWord),
-								nil,
-							))
-							if verbose {
-								fmt.Printf("%s/%s borrowing-from %s/%s\n", l.Code, w.Name, b.FromLang, b.FromWord)
-							}
-							quadCount++
+							allQuads := createQuads(rootMap, "borrowing-from", l.Code, w.Name, b.FromLang, b.FromWord)
+							quads = append(quads, allQuads...)
+							quadCount += len(allQuads)
 						}
 					}
 					for _, d := range l.Etymology.Derived {
 						if d.FromLang == parentLang {
-							quads = append(quads, quad.Make(
-								fmt.Sprintf("%s/%s", l.Code, w.Name),
-								"derived-from",
-								fmt.Sprintf("%s/%s", d.FromLang, d.FromWord),
-								nil,
-							))
-							if verbose {
-								fmt.Printf("%s/%s derived-from %s/%s\n", l.Code, w.Name, d.FromLang, d.FromWord)
-							}
-							quadCount++
+							allQuads := createQuads(rootMap, "derived-from", l.Code, w.Name, d.FromLang, d.FromWord)
+							quads = append(quads, allQuads...)
+							quadCount += len(allQuads)
 						}
 					}
 					for _, i := range l.Etymology.Inherited {
 						if i.FromLang == parentLang {
-							quads = append(quads, quad.Make(
-								fmt.Sprintf("%s/%s", l.Code, w.Name),
-								"inherited-from",
-								fmt.Sprintf("%s/%s", i.FromLang, i.FromWord),
-								nil,
-							))
-							if verbose {
-								fmt.Printf("%s/%s inherited-from %s/%s\n", l.Code, w.Name, i.FromLang, i.FromWord)
-							}
-							quadCount++
+							allQuads := createQuads(rootMap, "inherited-from", l.Code, w.Name, i.FromLang, i.FromWord)
+							quads = append(quads, allQuads...)
+							quadCount += len(allQuads)
 						}
 					}
 					for _, m := range l.Etymology.Mentions {
 						if m.Lang == parentLang {
-							quads = append(quads, quad.Make(
-								fmt.Sprintf("%s/%s", l.Code, w.Name),
-								"mentions",
-								fmt.Sprintf("%s/%s", m.Lang, m.Word),
-								nil,
-							))
-							if verbose {
-								fmt.Printf("%s/%s mentions %s/%s\n", l.Code, w.Name, m.Lang, m.Word)
-							}
-							quadCount++
+							allQuads := createQuads(rootMap, "mentions", l.Code, w.Name, m.Lang, m.Word)
+							quads = append(quads, allQuads...)
+							quadCount += len(allQuads)
 						}
 					}
 				}

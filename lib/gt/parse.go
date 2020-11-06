@@ -40,6 +40,16 @@ type Language struct {
 	definitionRoot   *RootWord
 }
 
+type Etymology struct {
+	Cognates  []tpl.Cognate   `json:"cognates,omitempty" firestore:"cognates,omitempty"`
+	Mentions  []tpl.Mention   `json:"mentions,omitempty" firestore:"mentions,omitempty"`
+	Borrows   []tpl.Borrow    `json:"borrows,omitempty" firestore:"borrows,omitempty"`
+	Derived   []tpl.Derived   `json:"derived,omitempty" firestore:"derived,omitempty"`
+	Inherited []tpl.Inherited `json:"inherited,omitempty" firestore:"inherited,omitempty"`
+	Prefixes  []tpl.Prefix    `json:"prefixes,omitempty" firestore:"prefixes,omitempty"`
+	Suffixes  []tpl.Suffix    `json:"suffixes,omitempty" firestore:"suffixes,omitempty"`
+}
+
 type LinkBuffer struct {
 	Link string
 	Name *string
@@ -70,14 +80,21 @@ type RootWord struct {
 	Name string `json:"name" firestore:"name"`
 }
 
-type Etymology struct {
-	Cognates  []tpl.Cognate   `json:"cognates,omitempty" firestore:"cognates,omitempty"`
-	Mentions  []tpl.Mention   `json:"mentions,omitempty" firestore:"mentions,omitempty"`
-	Borrows   []tpl.Borrow    `json:"borrows,omitempty" firestore:"borrows,omitempty"`
-	Derived   []tpl.Derived   `json:"derived,omitempty" firestore:"derived,omitempty"`
-	Inherited []tpl.Inherited `json:"inherited,omitempty" firestore:"inherited,omitempty"`
-	Prefixes  []tpl.Prefix    `json:"prefixes,omitempty" firestore:"prefixes,omitempty"`
-	Suffixes  []tpl.Suffix    `json:"suffixes,omitempty" firestore:"suffixes,omitempty"`
+func (l *Language) AllDefinitions() [][]Definition {
+	return [][]Definition{
+		l.Definitions.Nouns,
+		l.Definitions.Adjectives,
+		l.Definitions.Verbs,
+		l.Definitions.Adverbs,
+		l.Definitions.Articles,
+		l.Definitions.Prepositions,
+		l.Definitions.Pronouns,
+		l.Definitions.Conjunctions,
+		l.Definitions.Interjections,
+		l.Definitions.Numerals,
+		l.Definitions.Particles,
+		l.Definitions.Determiners,
+	}
 }
 
 func (w *Word) IsEmpty() bool {

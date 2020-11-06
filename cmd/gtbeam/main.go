@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"sort"
 
 	"github.com/apache/beam/sdks/go/pkg/beam"
 	"github.com/apache/beam/sdks/go/pkg/beam/io/textio"
@@ -39,13 +40,20 @@ func cognateFn(word gt.Word, emit func(string)) {
 		if _, ok := gt.SourceLangs[lang]; !ok {
 			continue
 		}
-		cognates := gt.GetCognates(graph, lang, word.Name)
-		if len(cognates) == 0 {
+		cognateMap := gt.GetCognates(graph, lang, word.Name)
+		if len(cognateMap) == 0 {
 			continue
 		}
 		langCognates[lang] = &gt.Language{
-			Code:     lang,
-			Cognates: cognates,
+			Code: lang,
+		}
+		var cognates []string
+		for cognate := range cognateMap {
+			cognates = append(cognates, cognate)
+		}
+		sort.Strings(cognates)
+		for _, cognate := range cognates {
+			langCognates[lang].Cognates = append(langCognates[lang].Cognates, cognateMap[cognate])
 		}
 	}
 

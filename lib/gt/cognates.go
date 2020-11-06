@@ -15,7 +15,7 @@ type Cognate struct {
 	From string `json:"from" firestore:"from"`
 }
 
-func GetCognates(graph *cayley.Handle, lang string, word string) []*Cognate {
+func GetCognates(graph *cayley.Handle, lang string, word string) map[string]*Cognate {
 	prefix := fmt.Sprintf("%s/", lang)
 	w := quad.String(prefix + word)
 
@@ -31,16 +31,16 @@ func GetCognates(graph *cayley.Handle, lang string, word string) []*Cognate {
 		log.Fatalf("Unable to execute query: %s", err)
 	}
 
-	ds := []*Cognate{}
+	cognates := map[string]*Cognate{}
 
 	for i, r := range rs {
 		if strings.HasPrefix(r, prefix) {
 			continue
 		}
-		ds = append(ds, &Cognate{Word: r, From: ts[i]})
+		cognates[r] = &Cognate{Word: r, From: ts[i]}
 	}
 
-	return ds
+	return cognates
 }
 
 func findParents(p *path.Path) *path.Path {
