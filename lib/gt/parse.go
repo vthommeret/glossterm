@@ -630,12 +630,6 @@ Parse:
 				language.linkBuffer = nil
 			}
 		case itemText:
-			// TODO: More intelligently handle whitespace in lexer. Emit newline
-			// tokens and ignore otherwise unimportant whitespace.
-			if language != nil && language.listItem != nil && strings.Contains(i.val, "\n") {
-				language.Links =
-					append(language.Links, language.listItem.TplLinks(langMap)...)
-			}
 			if inLanguageHeader {
 				if l, ok := lang.CanonicalLangs[i.val]; ok {
 					if _, ok := langMap[l.Code]; ok {
