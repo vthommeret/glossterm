@@ -246,6 +246,10 @@ func (l *lexer) lexListItem(startDelim string, startItem itemType, endItem itemT
 		// Definition list item (#:)
 		defnPrefix := fmt.Sprintf("%s%s", delim, definitionStart)
 		if strings.HasPrefix(l.input[l.pos:], defnPrefix) {
+			if l.inListItem {
+				l.emit(endItem)
+			}
+			l.inListItem = true
 			return true, lexDelim(definitionItem, defnPrefix, i)
 		}
 
@@ -255,6 +259,10 @@ func (l *lexer) lexListItem(startDelim string, startItem itemType, endItem itemT
 		// #* '''1988''', LaVonne Straub, ‎Norman Walzer, ''Financing Rural Health Care'' (page 97)
 		alternatePrefix := fmt.Sprintf("%s%s", delim, alternateDelim)
 		if strings.HasPrefix(l.input[l.pos:], alternatePrefix) {
+			if l.inListItem {
+				l.emit(endItem)
+			}
+			l.inListItem = true
 			return true, lexDelim(alternateItem, alternatePrefix, i)
 		}
 

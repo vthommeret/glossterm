@@ -176,87 +176,90 @@ func (l *Language) IsEmpty() bool {
 }
 
 func (l *Language) flushDefinition() {
-	definition := strings.TrimSpace(strings.Join(l.definitionBuffer, ""))
+	if l.definitionBuffer != nil {
+		definition := strings.TrimSpace(strings.Join(l.definitionBuffer, ""))
 
-	root := l.definitionRoot
-	if definition != "" {
-		switch l.section {
-		case nounSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
+		root := l.definitionRoot
+		if definition != "" {
+			switch l.section {
+			case nounSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Nouns =
+					append(l.Definitions.Nouns, Definition{Text: definition, Root: root})
+			case adjectiveSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Adjectives =
+					append(l.Definitions.Adjectives, Definition{Text: definition, Root: root})
+			case verbSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Verbs =
+					append(l.Definitions.Verbs, Definition{Text: definition, Root: root})
+			case adverbSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Adverbs =
+					append(l.Definitions.Adverbs, Definition{Text: definition, Root: root})
+			case articleSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Articles =
+					append(l.Definitions.Articles, Definition{Text: definition, Root: root})
+			case prepositionSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Prepositions =
+					append(l.Definitions.Prepositions, Definition{Text: definition, Root: root})
+			case pronounSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Pronouns =
+					append(l.Definitions.Pronouns, Definition{Text: definition, Root: root})
+			case conjunctionSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Conjunctions =
+					append(l.Definitions.Conjunctions, Definition{Text: definition, Root: root})
+			case interjectionSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Interjections =
+					append(l.Definitions.Interjections, Definition{Text: definition, Root: root})
+			case numeralSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Numerals =
+					append(l.Definitions.Numerals, Definition{Text: definition, Root: root})
+			case particleSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Particles =
+					append(l.Definitions.Particles, Definition{Text: definition, Root: root})
+			case determinerSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Determiners =
+					append(l.Definitions.Determiners, Definition{Text: definition, Root: root})
 			}
-			l.Definitions.Nouns =
-				append(l.Definitions.Nouns, Definition{Text: definition, Root: root})
-		case adjectiveSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Adjectives =
-				append(l.Definitions.Adjectives, Definition{Text: definition, Root: root})
-		case verbSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Verbs =
-				append(l.Definitions.Verbs, Definition{Text: definition, Root: root})
-		case adverbSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Adverbs =
-				append(l.Definitions.Adverbs, Definition{Text: definition, Root: root})
-		case articleSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Articles =
-				append(l.Definitions.Articles, Definition{Text: definition, Root: root})
-		case prepositionSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Prepositions =
-				append(l.Definitions.Prepositions, Definition{Text: definition, Root: root})
-		case pronounSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Pronouns =
-				append(l.Definitions.Pronouns, Definition{Text: definition, Root: root})
-		case conjunctionSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Conjunctions =
-				append(l.Definitions.Conjunctions, Definition{Text: definition, Root: root})
-		case interjectionSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Interjections =
-				append(l.Definitions.Interjections, Definition{Text: definition, Root: root})
-		case numeralSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Numerals =
-				append(l.Definitions.Numerals, Definition{Text: definition, Root: root})
-		case particleSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Particles =
-				append(l.Definitions.Particles, Definition{Text: definition, Root: root})
-		case determinerSection:
-			if l.Definitions == nil {
-				l.Definitions = &Definitions{}
-			}
-			l.Definitions.Determiners =
-				append(l.Definitions.Determiners, Definition{Text: definition, Root: root})
 		}
 	}
 	l.definitionBuffer = nil
 	l.definitionRoot = nil
+	l.listItemDepth = 0
 	l.inListItemDefinition = false
 	l.inListItemSublist = false
 }
@@ -596,7 +599,7 @@ Parse:
 				language.listItem.Prefix = i.val
 			}
 		case itemListItemEnd:
-			if language != nil && language.definitionBuffer != nil {
+			if language != nil {
 				language.flushDefinition()
 			}
 		case itemLeftLink:
