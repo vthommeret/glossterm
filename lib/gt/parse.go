@@ -177,6 +177,7 @@ func (l *Language) IsEmpty() bool {
 
 func (l *Language) flushDefinition() {
 	definition := strings.TrimSpace(strings.Join(l.definitionBuffer, ""))
+
 	root := l.definitionRoot
 	if definition != "" {
 		switch l.section {
@@ -306,6 +307,168 @@ var wordTypeMap = map[string]sectionType{
 	"Determiner":   determinerSection,
 }
 
+var formOfMap = map[string]*FormTemplate{
+	"abbreviation of":                      &FormTemplate{Shortcuts: []string{"abbr of"}},
+	"abstract noun of":                     &FormTemplate{},
+	"accusative of":                        &FormTemplate{Tags: []string{"acc"}},
+	"accusative plural of":                 &FormTemplate{Tags: []string{"acc", "p"}},
+	"accusative singular of":               &FormTemplate{Tags: []string{"acc", "s"}},
+	"acronym of":                           &FormTemplate{},
+	"active participle of":                 &FormTemplate{Tags: []string{"act", "part"}},
+	"adj form of":                          &FormTemplate{},
+	"agent noun of":                        &FormTemplate{},
+	"alternative case form of":             &FormTemplate{Shortcuts: []string{"alt case"}},
+	"alternative form of":                  &FormTemplate{Shortcuts: []string{"alt form", "altform"}},
+	"alternative plural of":                &FormTemplate{},
+	"alternative reconstruction of":        &FormTemplate{Tags: []string{"alternative", "reconstruction"}},
+	"alternative spelling of":              &FormTemplate{Shortcuts: []string{"alt sp"}},
+	"alternative typography of":            &FormTemplate{},
+	"aphetic form of":                      &FormTemplate{Tags: []string{"attr", "form"}},
+	"apocopic form of":                     &FormTemplate{},
+	"archaic form of":                      &FormTemplate{},
+	"archaic inflection of":                &FormTemplate{},
+	"archaic spelling of":                  &FormTemplate{},
+	"aspirate mutation of":                 &FormTemplate{},
+	"attributive form of":                  &FormTemplate{Tags: []string{"attr", "form"}},
+	"augmentative of":                      &FormTemplate{},
+	"broad form of":                        &FormTemplate{},
+	"causative of":                         &FormTemplate{Tags: []string{"caus"}},
+	"clipping of":                          &FormTemplate{Shortcuts: []string{"clip of"}},
+	"combining form of":                    &FormTemplate{},
+	"comparative of":                       &FormTemplate{},
+	"construed with":                       &FormTemplate{},
+	"contraction of":                       &FormTemplate{},
+	"dated form of":                        &FormTemplate{},
+	"dated spelling of":                    &FormTemplate{},
+	"dative of":                            &FormTemplate{Tags: []string{"dat"}},
+	"dative plural of":                     &FormTemplate{Tags: []string{"dat", "p"}},
+	"dative singular of":                   &FormTemplate{Tags: []string{"dat", "s"}},
+	"definite singular of":                 &FormTemplate{Tags: []string{"def", "s"}},
+	"definite plural of":                   &FormTemplate{Tags: []string{"def", "p"}},
+	"deliberate misspelling of":            &FormTemplate{},
+	"diminutive of":                        &FormTemplate{Shortcuts: []string{"dim of"}},
+	"dual of":                              &FormTemplate{Tags: []string{"d"}},
+	"eclipsis of":                          &FormTemplate{Text: "eclipsed form of"},
+	"eggcorn of":                           &FormTemplate{},
+	"elative of":                           &FormTemplate{Tags: []string{"elad"}},
+	"ellipsis of":                          &FormTemplate{},
+	"elongated form of":                    &FormTemplate{},
+	"endearing diminutive of":              &FormTemplate{},
+	"endearing form of":                    &FormTemplate{},
+	"equative of":                          &FormTemplate{Text: "equative degree of"},
+	"euphemistic form of":                  &FormTemplate{},
+	"euphemistic spelling of":              &FormTemplate{},
+	"eye dialect of":                       &FormTemplate{Text: "eye dialect spelling of"},
+	"female equivalent of":                 &FormTemplate{Tags: []string{"female", "equivalent"}},
+	"feminine of":                          &FormTemplate{Tags: []string{"f"}},
+	"feminine plural of":                   &FormTemplate{Tags: []string{"f", "p"}},
+	"feminine plural past participle of":   &FormTemplate{Tags: []string{"f", "p", "of the", "past", "part"}},
+	"feminine singular of":                 &FormTemplate{Tags: []string{"f", "s"}},
+	"feminine singular past participle of": &FormTemplate{Tags: []string{"f", "s", "of the", "past", "part"}},
+	"form of":                              &FormTemplate{}, // https://en.wiktionary.org/wiki/Template:form_of
+	"former name of":                       &FormTemplate{},
+	"frequentative of":                     &FormTemplate{Tags: []string{"freq"}},
+	"future participle of":                 &FormTemplate{Tags: []string{"fut", "part"}},
+	"genitive of":                          &FormTemplate{Tags: []string{"gen"}},
+	"genitive plural of":                   &FormTemplate{Tags: []string{"gen", "p"}},
+	"genitive singular of":                 &FormTemplate{Tags: []string{"gen", "s"}},
+	"gerund of":                            &FormTemplate{Tags: []string{"gerund"}},
+	"h-prothesis of":                       &FormTemplate{Text: "h-prothesized form of"},
+	"hard mutation of":                     &FormTemplate{},
+	"harmonic variant of":                  &FormTemplate{},
+	"honorific alternative case form of":   &FormTemplate{Text: "honorific alternative letter-case form of", Shortcuts: []string{"honor alt case"}},
+	"imperative of":                        &FormTemplate{Tags: []string{"impr"}},
+	"imperfective form of":                 &FormTemplate{Tags: []string{"impfv"}},
+	"indefinite plural of":                 &FormTemplate{Tags: []string{"indef", "p"}},
+	"inflection of":                        &FormTemplate{Shortcuts: []string{"infl of"}, Inflection: true},
+	"informal form of":                     &FormTemplate{},
+	"informal spelling of":                 &FormTemplate{},
+	"initialism of":                        &FormTemplate{Shortcuts: []string{"init of"}},
+	"iterative of":                         &FormTemplate{Tags: []string{"iter"}},
+	"lenition of":                          &FormTemplate{Text: "lenited form of"},
+	"masculine noun of":                    &FormTemplate{Tags: []string{"m", "equivalent"}},
+	"masculine of":                         &FormTemplate{Tags: []string{"m"}},
+	"masculine plural of":                  &FormTemplate{Tags: []string{"m", "p"}},
+	"masculine plural past participle of":  &FormTemplate{Tags: []string{"m", "p", "of the", "past", "part"}},
+	"medieval spelling of":                 &FormTemplate{},
+	"men's speech form of":                 &FormTemplate{},
+	"misconstruction of":                   &FormTemplate{},
+	"misromanization of":                   &FormTemplate{},
+	"misspelling of":                       &FormTemplate{Shortcuts: []string{"missp"}},
+	"mixed mutation of":                    &FormTemplate{},
+	"nasal mutation of":                    &FormTemplate{},
+	"negative of":                          &FormTemplate{Tags: []string{"neg", "form"}},
+	"neuter plural of":                     &FormTemplate{Tags: []string{"n", "p"}},
+	"neuter singular of":                   &FormTemplate{Tags: []string{"n", "s"}},
+	"neuter singular past participle of":   &FormTemplate{Tags: []string{"n", "s", "of the", "past", "part"}},
+	"nomen sacrum form of":                 &FormTemplate{},
+	"nominalization of":                    &FormTemplate{Tags: []string{"nomzn"}},
+	"nominative plural of":                 &FormTemplate{Tags: []string{"nom", "p"}},
+	"nonstandard form of":                  &FormTemplate{},
+	"nonstandard spelling of":              &FormTemplate{},
+	"noun form of":                         &FormTemplate{},
+	"nuqtaless form of":                    &FormTemplate{},
+	"obsolete form of":                     &FormTemplate{Shortcuts: []string{"obs sp"}},
+	"obsolete spelling of":                 &FormTemplate{},
+	"obsolete typography of":               &FormTemplate{},
+	"participle of":                        &FormTemplate{},
+	"passive of":                           &FormTemplate{Tags: []string{"pasv"}},
+	"passive participle of":                &FormTemplate{Tags: []string{"pass", "part"}},
+	"passive past tense of":                &FormTemplate{Tags: []string{"pass", "past"}},
+	"past active participle of":            &FormTemplate{Tags: []string{"pass", "actv", "ptcp"}},
+	"past participle form of":              &FormTemplate{},
+	"past participle of":                   &FormTemplate{Tags: []string{"past", "ptcp"}},
+	"past passive participle of":           &FormTemplate{Tags: []string{"past", "pasv", "ptcp"}},
+	"past tense of":                        &FormTemplate{Tags: []string{"past", "tense"}},
+	"pejorative of":                        &FormTemplate{Tags: []string{"pej"}},
+	"perfect participle of":                &FormTemplate{Tags: []string{"perf", "part"}},
+	"perfective form of":                   &FormTemplate{Tags: []string{"pfv", "form"}},
+	"plural of":                            &FormTemplate{Tags: []string{"p"}},
+	"present active participle of":         &FormTemplate{Tags: []string{"pres", "act", "part"}},
+	"present participle of":                &FormTemplate{Tags: []string{"pres", "ptcp"}},
+	"present tense of":                     &FormTemplate{Tags: []string{"pres"}},
+	"pronunciation spelling of":            &FormTemplate{},
+	"pronunciation variant of":             &FormTemplate{},
+	"rare form of":                         &FormTemplate{},
+	"rare spelling of":                     &FormTemplate{Shortcuts: []string{"rare sp"}},
+	"reflexive of":                         &FormTemplate{Tags: []string{"refl"}},
+	"rfform":                               &FormTemplate{Text: "unknown form of"},
+	"romanization of":                      &FormTemplate{},
+	"short for":                            &FormTemplate{},
+	"singular of":                          &FormTemplate{Tags: []string{"s"}},
+	"singulative of":                       &FormTemplate{Tags: []string{"sgl"}},
+	"slender form of":                      &FormTemplate{},
+	"soft mutation of":                     &FormTemplate{},
+	"spelling of":                          &FormTemplate{},
+	"standard form of":                     &FormTemplate{},
+	"standard spelling of":                 &FormTemplate{Shortcuts: []string{"standard sp"}},
+	"superlative attributive of":           &FormTemplate{Tags: []string{"supd"}},
+	"superlative of":                       &FormTemplate{Text: "superlative degree of"},
+	"superlative predicative of":           &FormTemplate{Text: "superlative (when used predicatively) of"},
+	"superseded spelling of":               &FormTemplate{Shortcuts: []string{"sup sp"}},
+	"supine of":                            &FormTemplate{Tags: []string{"supine"}},
+	"syncopic form of":                     &FormTemplate{},
+	"synonym of":                           &FormTemplate{Shortcuts: []string{"syn of"}},
+	"t-prothesis of":                       &FormTemplate{Text: "t-prothesized form of"},
+	"uncommon form of":                     &FormTemplate{},
+	"uncommon spelling of":                 &FormTemplate{},
+	"verbal noun of":                       &FormTemplate{Tags: []string{"vnoun"}},
+	"verb form of":                         &FormTemplate{Inflection: true},
+	"vocative plural of":                   &FormTemplate{Tags: []string{"voc", "p"}},
+	"vocative singular of":                 &FormTemplate{Tags: []string{"voc", "s"}},
+}
+
+var formOfShortcuts = map[string]*FormTemplate{}
+
+type FormTemplateType string
+
+type FormTemplate struct {
+	Tags       []string
+	Shortcuts  []string
+	Text       string
+	Inflection bool
+}
+
 type ListItem struct {
 	Prefix string
 	Links  []string
@@ -315,6 +478,15 @@ type TextBuffer []string
 
 func init() {
 	wordTypeRegex = regexp.MustCompile("^([^0-9]+)(?: [0-9]+)?$")
+
+	for text, form := range formOfMap {
+		if form.Text == "" {
+			form.Text = text
+		}
+		for _, shortcut := range form.Shortcuts {
+			formOfShortcuts[shortcut] = form
+		}
+	}
 }
 
 func definitionSection(section sectionType) bool {
@@ -625,66 +797,46 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, mention.Text())
 					}
-				case "synonym of", "syn of":
-					synonym := template.ToSynonym()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, synonym.Text())
-					}
 				case "gloss":
 					gloss := template.ToGloss()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, gloss.Text())
-					}
-				case "abbreviation of", "abbr of":
-					abbr := template.ToAbbreviation()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, abbr.Text())
-					}
-				case "acronym of":
-					acronym := template.ToAcronym()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, acronym.Text())
-					}
-				case "contraction of":
-					contraction := template.ToContraction()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, contraction.Text())
-					}
-				case "initialism of", "init of":
-					initialism := template.ToInitialism()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, initialism.Text())
 					}
 				case "non-gloss definition", "non-gloss", "non gloss", "ngd", "n-g":
 					nonGloss := template.ToNonGloss()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, nonGloss.Text())
 					}
-				case "inflection of":
-					inflection := template.ToInflection()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, inflection.Text())
-					}
-				case "past participle of":
-					pastParticiple := template.ToPastParticiple()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, pastParticiple.Text())
-						language.definitionRoot = &RootWord{Lang: pastParticiple.Lang, Name: pastParticiple.Word}
-					}
-				case "alternative form of", "alt form":
-					altForm := template.ToAltForm()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, altForm.Text())
-					}
+					// TODO: Remove
 				case "feminine noun of":
 					femNoun := template.ToFemNoun()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, femNoun.Text())
 					}
-				case "apocopic form of":
-					apocopic := template.ToApocopic()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, apocopic.Text())
+
+				default:
+					if template.Action == "form of" {
+						formOf := template.ToFormOfGeneric()
+						if language.definitionBuffer != nil {
+							language.definitionBuffer = append(language.definitionBuffer, formOf.Text())
+							language.definitionRoot = &RootWord{Lang: formOf.Lang, Name: formOf.DisplayWord()}
+						}
+					} else {
+						var formTpl *FormTemplate
+
+						if defn, ok := formOfMap[template.Action]; ok {
+							formTpl = defn
+						} else if defn, ok := formOfShortcuts[template.Action]; ok {
+							formTpl = defn
+						}
+
+						if formTpl != nil {
+							formOf := template.ToFormOf(formTpl.Text, formTpl.Tags...)
+							if language.definitionBuffer != nil {
+								language.definitionBuffer = append(language.definitionBuffer, formOf.Text())
+								language.definitionRoot = &RootWord{Lang: formOf.Lang, Name: formOf.DisplayWord()}
+							}
+						}
 					}
 				}
 			}

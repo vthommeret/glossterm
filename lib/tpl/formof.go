@@ -6,11 +6,14 @@ import (
 	"strings"
 )
 
-// https://en.wiktionary.org/wiki/Template:inflection_of
-type Inflection struct {
-	Lang  string `lang:"true" json:"lang,omitempty" firestore:"lang,omitempty"`
-	Lemma string `json:"lemma,omitempty" firestore:"lemma,omitempty"`
-	Alt   string `json:"alt,omitempty" firestore:"alt,omitempty"`
+// https://en.wiktionary.org/wiki/Module:form_of
+// https://en.wiktionary.org/wiki/Module:form_of/templates
+// https://en.wiktionary.org/wiki/Template:plural_of
+// https://en.wiktionary.org/wiki/Category:Form-of_templates
+type FormOf struct {
+	Lang string `lang:"true" json:"lang,omitempty" firestore:"lang,omitempty"`
+	Word string `json:"word,omitempty" firestore:"word,omitempty"`
+	Alt  string `json:"alt,omitempty" firestore:"alt,omitempty"`
 
 	Tag1  string `json:"tag1,omitempty" firestore:"tag1,omitempty"`
 	Tag2  string `json:"tag2,omitempty" firestore:"tag2,omitempty"`
@@ -22,6 +25,16 @@ type Inflection struct {
 	Tag8  string `json:"tag8,omitempty" firestore:"tag8,omitempty"`
 	Tag9  string `json:"tag9,omitempty" firestore:"tag9,omitempty"`
 	Tag10 string `json:"tag10,omitempty" firestore:"tag10,omitempty"`
+
+	Form string `json:"form,omityempty" firestore:"form,omitempty"`
+}
+
+// https://en.wiktionary.org/wiki/Template:form_of
+type FormOfGeneric struct {
+	Lang       string `lang:"true" json:"lang,omitempty" firestore:"lang,omitempty"`
+	Definition string `json:"definition,omitempty" firestore:"definition,omitempty"`
+	Word       string `json:"word,omitempty" firestore:"word,omitempty"`
+	Alt        string `json:"alt,omitempty" firestore:"alt,omitempty"`
 }
 
 type GlossaryEntry struct {
@@ -32,12 +45,7 @@ type GlossaryEntry struct {
 	NoRightSpace bool
 }
 
-// See:
-//   https://en.wiktionary.org/wiki/Module:form_of/templates#inflection_of_t
-//   https://en.wiktionary.org/wiki/Module:form_of/data
-// Not yet implemented:
-//   https://en.wiktionary.org/wiki/Module:form_of/data2
-var glossary = map[string]*GlossaryEntry{
+var formOfGlossary = map[string]*GlossaryEntry{
 	// Person
 
 	"first-person": &GlossaryEntry{
@@ -144,8 +152,7 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"past": &GlossaryEntry{
-		Type:      "tense-aspect",
-		Shortcuts: []string{},
+		Type: "tense-aspect",
 	},
 
 	"future": &GlossaryEntry{
@@ -216,7 +223,8 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"subjunctive": &GlossaryEntry{
-		Type: "mood",
+		Type:      "mood",
+		Shortcuts: []string{"sub", "subj"},
 	},
 
 	"conditional": &GlossaryEntry{
@@ -234,7 +242,7 @@ var glossary = map[string]*GlossaryEntry{
 		Shortcuts: []string{"juss"},
 	},
 
-	// Voice/valence
+	// Voice / valence
 
 	"active": &GlossaryEntry{
 		Type:      "voice-valence",
@@ -247,7 +255,8 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"passive": &GlossaryEntry{
-		Type: "voice-valence",
+		Type:      "voice-valence",
+		Shortcuts: []string{"pass", "pasv"},
 	},
 
 	"mediopassive": &GlossaryEntry{
@@ -271,7 +280,8 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"ditransitive": &GlossaryEntry{
-		Type: "voice-valence",
+		Type:      "voice-valence",
+		Shortcuts: []string{"ditr"},
 	},
 
 	"causative": &GlossaryEntry{
@@ -302,7 +312,8 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"gerund": &GlossaryEntry{
-		Type: "non-finite",
+		Type:      "non-finite",
+		Shortcuts: []string{"ger"},
 	},
 
 	"supine": &GlossaryEntry{
@@ -311,8 +322,7 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"transgressive": &GlossaryEntry{
-		Type:      "non-finite",
-		Shortcuts: []string{},
+		Type: "non-finite",
 	},
 
 	// Case
@@ -326,6 +336,7 @@ var glossary = map[string]*GlossaryEntry{
 		Type:      "case",
 		Shortcuts: []string{"acc"},
 	},
+
 	"dative": &GlossaryEntry{
 		Type:      "case",
 		Shortcuts: []string{"dat"},
@@ -352,7 +363,8 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"prepositional": &GlossaryEntry{
-		Type: "case",
+		Type:      "case",
+		Shortcuts: []string{"pre", "prep"},
 	},
 
 	"vocative": &GlossaryEntry{
@@ -366,6 +378,7 @@ var glossary = map[string]*GlossaryEntry{
 		Type:      "state",
 		Shortcuts: []string{"cons", "construct state"},
 	},
+
 	"definite": &GlossaryEntry{
 		Type:      "state",
 		Shortcuts: []string{"def", "defn", "definite state"},
@@ -377,7 +390,8 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"strong": &GlossaryEntry{
-		Type: "state",
+		Type:      "state",
+		Shortcuts: []string{"str"},
 	},
 
 	"weak": &GlossaryEntry{
@@ -389,6 +403,7 @@ var glossary = map[string]*GlossaryEntry{
 		Type:      "state",
 		Shortcuts: []string{"mix"},
 	},
+
 	"attributive": &GlossaryEntry{
 		Type:      "state",
 		Shortcuts: []string{"attr"},
@@ -416,12 +431,6 @@ var glossary = map[string]*GlossaryEntry{
 		Shortcuts: []string{"supd", "superlative"},
 	},
 
-	// Register
-
-	// Deixis
-
-	// Clusivity
-
 	// Inflectional class
 
 	"pronominal": &GlossaryEntry{
@@ -435,6 +444,7 @@ var glossary = map[string]*GlossaryEntry{
 		Type:      "attitude",
 		Shortcuts: []string{"aug"},
 	},
+
 	"diminutive": &GlossaryEntry{
 		Type:      "attitude",
 		Shortcuts: []string{"dim"},
@@ -448,8 +458,7 @@ var glossary = map[string]*GlossaryEntry{
 	// Sound changes
 
 	"contracted": &GlossaryEntry{
-		Type:      "sound change",
-		Shortcuts: []string{},
+		Type: "sound change",
 	},
 
 	// Misc grammar
@@ -460,17 +469,15 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"short": &GlossaryEntry{
-		Type:      "grammar",
-		Shortcuts: []string{},
+		Type: "grammar",
 	},
+
 	"long": &GlossaryEntry{
-		Type:      "grammar",
-		Shortcuts: []string{},
+		Type: "grammar",
 	},
 
 	"form": &GlossaryEntry{
-		Type:      "grammar",
-		Shortcuts: []string{},
+		Type: "grammar",
 	},
 
 	"adjectival": &GlossaryEntry{
@@ -504,19 +511,18 @@ var glossary = map[string]*GlossaryEntry{
 	},
 
 	"root": &GlossaryEntry{
-		Type:      "grammar",
-		Shortcuts: []string{},
+		Type: "grammar",
 	},
 
 	"stem": &GlossaryEntry{
-		Type:      "grammar",
-		Shortcuts: []string{},
+		Type: "grammar",
 	},
 
 	"dependent": &GlossaryEntry{
 		Type:      "grammar",
 		Shortcuts: []string{"dep"},
 	},
+
 	"independent": &GlossaryEntry{
 		Type:      "grammar",
 		Shortcuts: []string{"indep"},
@@ -525,66 +531,61 @@ var glossary = map[string]*GlossaryEntry{
 	// Other tags
 
 	"and": &GlossaryEntry{
-		Type:      "other",
-		Shortcuts: []string{},
+		Type: "other",
 	},
 
 	",": &GlossaryEntry{
 		Type:        "other",
-		Shortcuts:   []string{},
 		NoLeftSpace: true,
 	},
 
 	":": &GlossaryEntry{
 		Type:        "other",
-		Shortcuts:   []string{},
 		NoLeftSpace: true,
 	},
 
 	"/": &GlossaryEntry{
 		Type:         "other",
-		Shortcuts:    []string{},
 		NoLeftSpace:  true,
 		NoRightSpace: true,
 	},
 
 	"(": &GlossaryEntry{
 		Type:         "other",
-		Shortcuts:    []string{},
 		NoRightSpace: true,
 	},
 
 	")": &GlossaryEntry{
 		Type:        "other",
-		Shortcuts:   []string{},
 		NoLeftSpace: true,
 	},
 
-	"[": &GlossaryEntry{
+	"[": {
 		Type:         "other",
-		Shortcuts:    []string{},
 		NoRightSpace: true,
 	},
 
-	"]": &GlossaryEntry{
+	"]": {
 		Type:        "other",
-		Shortcuts:   []string{},
 		NoLeftSpace: true,
 	},
 
-	"-": &GlossaryEntry{
+	"-": {
 		Type:         "other",
-		Shortcuts:    []string{},
 		NoLeftSpace:  true,
 		NoRightSpace: true,
 	},
 }
 
-var shortcuts = map[string][]string{
-	"12":  {"1", "/", "2"},
-	"13":  {"1", "/", "3"},
-	"23":  {"2", "/", "3"},
-	"123": {"1", "/", "2", "/", "3"},
+var formOfShortcuts = map[string][]string{
+	// Person
+
+	"12":  {"1//2"},
+	"13":  {"1//3"},
+	"23":  {"2//3"},
+	"123": {"1//2//3"},
+
+	// Number
 
 	"1s": {"1", "s"},
 	"2s": {"2", "s"},
@@ -596,10 +597,14 @@ var shortcuts = map[string][]string{
 	"2p": {"2", "p"},
 	"3p": {"3", "p"},
 
-	"mf":  {"m", "/", "f"},
-	"mn":  {"m", "/", "n"},
-	"fn":  {"f", "/", "n"},
-	"mfn": {"m", "/", "f", "/", "n"},
+	// Gender
+
+	"mf":  {"m//f"},
+	"mn":  {"m//n"},
+	"fn":  {"f//n"},
+	"mfn": {"m//f//n"},
+
+	// Tense / aspect
 
 	"spast":          {"simple", "past"},
 	"simple past":    {"simple", "past"},
@@ -608,36 +613,81 @@ var shortcuts = map[string][]string{
 }
 
 func init() {
-	for name := range glossary {
-		glossary[name].Name = name
-		for _, shortcut := range glossary[name].Shortcuts {
-			shortcuts[shortcut] = []string{name}
+	for name := range formOfGlossary {
+		formOfGlossary[name].Name = name
+		for _, shortcut := range formOfGlossary[name].Shortcuts {
+			formOfShortcuts[shortcut] = []string{name}
 		}
 	}
 }
 
-func (tpl *Template) ToInflection() Inflection {
-	i := Inflection{}
-	tpl.toConcrete(reflect.TypeOf(i), reflect.ValueOf(&i))
-	i.Lemma = toEntryName(i.Lang, i.Lemma)
-	return i
+func (tpl *Template) ToFormOf(form string, tags ...string) FormOf {
+	fo := FormOf{}
+
+	ts := len(tags)
+	if ts > 0 {
+		fo.Tag1 = tags[0]
+	}
+	if ts > 1 {
+		fo.Tag2 = tags[1]
+	}
+	if ts > 2 {
+		fo.Tag3 = tags[2]
+	}
+	if ts > 3 {
+		fo.Tag4 = tags[3]
+	}
+	if ts > 4 {
+		fo.Tag5 = tags[4]
+	}
+	if ts > 5 {
+		fo.Tag6 = tags[5]
+	}
+	if ts > 6 {
+		fo.Tag7 = tags[6]
+	}
+	if ts > 7 {
+		fo.Tag8 = tags[7]
+	}
+	if ts > 8 {
+		fo.Tag9 = tags[8]
+	}
+	if ts > 9 {
+		fo.Tag10 = tags[9]
+	}
+
+	tpl.toConcrete(reflect.TypeOf(fo), reflect.ValueOf(&fo))
+	fo.Word = toEntryName(fo.Lang, fo.Word)
+	fo.Form = form
+	return fo
 }
 
-func (i *Inflection) Text() string {
-	desc := GetDescription([]string{
-		i.Tag1, i.Tag2, i.Tag3, i.Tag4, i.Tag5, i.Tag6, i.Tag7, i.Tag8, i.Tag9, i.Tag10,
-	})
-	return fmt.Sprintf("%s of %s", desc, i.Lemma)
+func (fo *FormOf) DisplayWord() string {
+	if fo.Alt != "" {
+		return fo.Alt
+	}
+	return fo.Word
 }
 
-func GetDescription(tags []string) string {
-	expandedTags := expandTags(tags)
+func (fo *FormOf) Text() string {
+	desc := GetFormOfDescription(
+		fo.Form, fo.Tag1, fo.Tag2, fo.Tag3, fo.Tag4, fo.Tag5, fo.Tag6, fo.Tag7, fo.Tag8, fo.Tag9, fo.Tag10,
+	)
+	return fmt.Sprintf("%s %s", desc, fo.DisplayWord())
+}
+
+func GetFormOfDescription(form string, tags ...string) string {
+	expandedTags := expandFormOfTags(tags)
 
 	var entries []*GlossaryEntry
 	for _, tag := range expandedTags {
-		if entry, ok := glossary[tag]; ok {
+		if entry, ok := formOfGlossary[tag]; ok {
 			entries = append(entries, entry)
 		}
+	}
+
+	if len(entries) == 0 {
+		return form
 	}
 
 	parts := []string{}
@@ -650,17 +700,35 @@ func GetDescription(tags []string) string {
 		parts = append(parts, fmt.Sprintf("%s%s", entry.Name, space))
 	}
 
-	return strings.Join(parts, "")
+	return fmt.Sprintf("%s of", strings.Join(parts, ""))
 }
 
-func expandTags(tags []string) []string {
+func expandFormOfTags(tags []string) []string {
 	var expanded []string
 	for _, tag := range tags {
-		if _, ok := glossary[tag]; ok {
+		if _, ok := formOfGlossary[tag]; ok {
 			expanded = append(expanded, tag)
-		} else if tags, ok := shortcuts[tag]; ok {
-			expanded = append(expanded, expandTags(tags)...)
+		} else if tags, ok := formOfShortcuts[tag]; ok {
+			expanded = append(expanded, expandFormOfTags(tags)...)
 		}
 	}
 	return expanded
+}
+
+func (tpl *Template) ToFormOfGeneric() FormOfGeneric {
+	fog := FormOfGeneric{}
+	tpl.toConcrete(reflect.TypeOf(fog), reflect.ValueOf(&fog))
+	fog.Word = toEntryName(fog.Lang, fog.Word)
+	return fog
+}
+
+func (fog *FormOfGeneric) DisplayWord() string {
+	if fog.Alt != "" {
+		return fog.Alt
+	}
+	return fog.Word
+}
+
+func (fog *FormOfGeneric) Text() string {
+	return fmt.Sprintf("%s of %s", fog.Definition, fog.DisplayWord())
 }

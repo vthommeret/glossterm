@@ -13,9 +13,9 @@ require (
 	github.com/cayleygraph/quad v1.1.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/go-cmp v0.5.2
+	github.com/microcosm-cc/bluemonday v1.0.4
 	github.com/spf13/cobra v1.0.0 // indirect
-	golang.org/x/net v0.0.0-20200904194848-62affa334b73
-	golang.org/x/sys v0.0.0-20200917073148-efd3b9a0ff20 // indirect
+	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102
 	golang.org/x/text v0.3.3
 	golang.org/x/tools v0.0.0-20200917221617-d56e4e40bc9d // indirect
 	google.golang.org/api v0.32.0
