@@ -804,6 +804,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, nonGloss.Text())
 					}
+				case "label", "lbl", "lb":
+					label := template.ToLabel()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, label.Text())
+					}
 				case "qualifier":
 					qualifier := template.ToQualifier()
 					if language.definitionBuffer != nil {
