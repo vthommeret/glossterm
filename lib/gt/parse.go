@@ -680,7 +680,11 @@ Parse:
 			}
 		case itemRightTemplate:
 			templateDepth--
-			if language == nil || template == nil {
+
+			namedParam = nil
+
+			// Don't support nested templates for now
+			if language == nil || template == nil || templateDepth != 0 {
 				break
 			}
 			if language.section == etymologySection {
@@ -848,14 +852,20 @@ Parse:
 				}
 			}
 		case itemAction:
-			if template == nil {
+			// Don't support nested templates for now.
+			if template == nil || templateDepth != 1 {
 				break
 			}
 			template.Action = i.val
+		case itemParamDelim:
+			namedParam = nil
 		case itemParamText:
-			if template == nil {
+
+			// Don't support nested templates for now.
+			if template == nil || templateDepth != 1 {
 				break
 			}
+
 			if namedParam != nil {
 				namedParam.Value = i.val
 				template.NamedParameters = append(template.NamedParameters,
@@ -865,7 +875,8 @@ Parse:
 				template.Parameters = append(template.Parameters, i.val)
 			}
 		case itemParamName:
-			if template == nil {
+			// Don't support nested templates for now
+			if template == nil || templateDepth != 1 {
 				break
 			}
 			namedParam = &tpl.Parameter{Name: i.val}

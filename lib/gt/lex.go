@@ -48,7 +48,6 @@ const (
 	itemParamDelim  // Template parameter delimiter
 	itemParamName   // Template parameter name
 	itemParamText   // Template parameter text
-	itemPipe        // Pipe symbol
 	itemHeaderStart // Header start
 	itemHeaderEnd   // Header end
 
@@ -80,7 +79,6 @@ var itemName = map[itemType]string{
 	itemParamDelim:  "param delim",
 	itemParamName:   "param name",
 	itemParamText:   "param text",
-	itemPipe:        "pipe",
 	itemHeaderStart: "header start",
 	itemHeaderEnd:   "header end",
 
