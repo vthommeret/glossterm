@@ -459,6 +459,22 @@ var formOfMap = map[string]*FormTemplate{
 	"verb form of":                         &FormTemplate{Inflection: true},
 	"vocative plural of":                   &FormTemplate{Tags: []string{"voc", "p"}},
 	"vocative singular of":                 &FormTemplate{Tags: []string{"voc", "s"}},
+
+	// English templates
+	// https://en.wiktionary.org/wiki/Category:English_form-of_templates
+
+	"en-archaic third-person singular of":       &FormTemplate{Language: "en", Text: "(archaic) third-person singular simple present indicative form of"},
+	"en-comparative of":                         &FormTemplate{Language: "en", Text: "comparative form of"},
+	"en-archaic second-person singular of":      &FormTemplate{Language: "en", Text: "second-person singular simple present form of"},
+	"en-archaic second-person singular past of": &FormTemplate{Language: "en", Text: "second-person singular simple past form of"},
+	"en-ing form of":                            &FormTemplate{Language: "en", Text: "present participle and gerund of"},
+	"en-simple past of":                         &FormTemplate{Language: "en", Text: "simple past tense of"},
+	"en-irregular plural of":                    &FormTemplate{Language: "en", Text: "plural of"},
+	"en-past of":                                &FormTemplate{Language: "en", Text: "simple past tense and past participle of"},
+	"en-superlative of":                         &FormTemplate{Language: "en", Text: "superlative form of"},
+	"en-third-person singular of":               &FormTemplate{Language: "en", Text: "third-person singular simple present indicative form of"},
+
+	// TODO: Support https://en.wiktionary.org/wiki/Category:Spanish_form-of_templates
 }
 
 var formOfShortcuts = map[string]*FormTemplate{}
@@ -466,6 +482,7 @@ var formOfShortcuts = map[string]*FormTemplate{}
 type FormTemplateType string
 
 type FormTemplate struct {
+	Language   string
 	Tags       []string
 	Shortcuts  []string
 	Text       string
@@ -842,6 +859,13 @@ Parse:
 						}
 
 						if formTpl != nil {
+
+							// If form-of template specifies language, manually inject it to template parameters
+							// so word is still in second position.
+							if formTpl.Language != "" {
+								template.Parameters = append([]string{formTpl.Language}, template.Parameters...)
+							}
+
 							formOf := template.ToFormOf(formTpl.Text, formTpl.Tags...)
 							if language.definitionBuffer != nil {
 								language.definitionBuffer = append(language.definitionBuffer, formOf.Text())
