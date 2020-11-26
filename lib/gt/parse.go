@@ -813,7 +813,7 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, label.Text())
 					}
-				case "qualifier":
+				case "qualifier", "qual", "q", "i":
 					qualifier := template.ToQualifier()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, qualifier.Text())
