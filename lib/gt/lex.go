@@ -478,6 +478,9 @@ Loop:
 		case r == eof:
 			l.drainTplBuffer()
 			if l.inListItem {
+				if l.pos > l.start {
+					l.emit(itemText)
+				}
 				l.emit(itemListItemEnd)
 				l.inListItem = false
 			}
