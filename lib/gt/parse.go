@@ -293,6 +293,8 @@ const (
 const linkCategoryPrefix = "Category:"
 const linkReferencePrefix = "#"
 
+const spanishLang = "es"
+
 var wordTypeRegex *regexp.Regexp
 
 var wordTypeMap = map[string]sectionType{
@@ -840,6 +842,14 @@ Parse:
 					femNoun := template.ToFemNoun()
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, femNoun.Text())
+					}
+
+					// Spanish forms
+				case "es-verb form of":
+					spanishVerb := template.ToSpanishVerb()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, spanishVerb.Text())
+						language.definitionRoot = &RootWord{Lang: spanishLang, Name: spanishVerb.Word}
 					}
 
 				default:
