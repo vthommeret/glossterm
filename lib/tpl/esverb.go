@@ -22,7 +22,6 @@ type SpanishVerb struct {
 	Voseo      string `names:"voseo" json:"voseo,omitempty" firestore:"voseo,omitempty"`
 	Region     string `names:"region" json:"region,omitempty" firestore:"region,omitempty"`
 	NoDot      string `names:"nodot" json:"nodot,omitempty" firestore:"nodot,omitempty"`
-	NoCap      string `names:"nocap" json:"nocap,omitempty" firestore:"nocap,omitempty"`
 }
 
 const spanishLang = "es"
@@ -31,7 +30,11 @@ const spanishLang = "es"
 func (tpl *Template) ToSpanishVerb() SpanishVerb {
 	esv := SpanishVerb{}
 	tpl.toConcrete(reflect.TypeOf(esv), reflect.ValueOf(&esv))
+	esv.Normalize()
+	return esv
+}
 
+func (esv *SpanishVerb) Normalize() {
 	esv.Word = toEntryName(spanishLang, esv.Word)
 
 	// Normalize mood
@@ -130,8 +133,6 @@ func (tpl *Template) ToSpanishVerb() SpanishVerb {
 	default:
 		esv.Voseo = "no"
 	}
-
-	return esv
 }
 
 func (esv *SpanishVerb) Text() string {
@@ -158,7 +159,12 @@ func (esv *SpanishVerb) Text() string {
 		region = lbl.Text()
 	}
 
-	return strings.Join(nonEmptyParts(region, text), " ")
+	var dot string
+	if esv.NoDot == "" {
+		dot = "."
+	}
+
+	return strings.Join(nonEmptyParts(region, text), " ") + dot
 }
 
 // https://en.wiktionary.org/wiki/Template:es-verb_form_of/adverbial

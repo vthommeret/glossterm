@@ -851,6 +851,12 @@ Parse:
 						language.definitionBuffer = append(language.definitionBuffer, spanishVerb.Text())
 						language.definitionRoot = &RootWord{Lang: spanishLang, Name: spanishVerb.Word}
 					}
+				case "es-compound of":
+					spanishCompound := template.ToSpanishCompound()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, spanishCompound.Text())
+						language.definitionRoot = &RootWord{Lang: spanishLang, Name: spanishCompound.Word()}
+					}
 
 				default:
 					if template.Action == "form of" {
