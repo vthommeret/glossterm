@@ -837,6 +837,11 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, qualifier.Text())
 					}
+				case "frac":
+					frac := template.ToFrac()
+					if language.definitionBuffer != nil {
+						language.definitionBuffer = append(language.definitionBuffer, frac.Text())
+					}
 					// TODO: Remove
 				case "feminine noun of":
 					femNoun := template.ToFemNoun()
