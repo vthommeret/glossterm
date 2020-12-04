@@ -17,13 +17,15 @@ type Word struct {
 }
 
 type Language struct {
-	Code            string           `firestore:"code"`
-	Definitions     *Definitions     `json:"definitions,omitempty" firestore:"definitions,omitempty"`
-	Etymology       *Etymology       `json:"etymology,omitempty" firestore:"etymology,omitempty"`
-	Links           []tpl.Link       `json:"links,omitempty" firestore:"links,omitempty"`
-	Descendants     []tpl.Descendant `json:"descendants,omitempty" firestore:"descendants,omitempty"`
-	DescendantTrees []tpl.EtymTree   `json:"descendantTrees,omitempty" firestore:"descendantTrees,omitempty"`
-	Cognates        []*Cognate       `json:"cognates,omitempty" firestore:"cognates,omitempty"`
+	Code        string           `firestore:"code"`
+	Definitions *Definitions     `json:"definitions,omitempty" firestore:"definitions,omitempty"`
+	Etymology   *Etymology       `json:"etymology,omitempty" firestore:"etymology,omitempty"`
+	Links       []tpl.Link       `json:"links,omitempty" firestore:"links,omitempty"`
+	Descendants []tpl.Descendant `json:"descendants,omitempty" firestore:"descendants,omitempty"`
+	// TODO: Rename EtymTrees. May need to re-write DB.
+	DescendantTrees []tpl.EtymTree `json:"descendantTrees,omitempty" firestore:"descendantTrees,omitempty"`
+	DescTrees       []tpl.DescTree `json:"descTrees,omitempty" firestore:"descTrees,omitempty"`
+	Cognates        []*Cognate     `json:"cognates,omitempty" firestore:"cognates,omitempty"`
 
 	section      sectionType
 	subSection   sectionType
@@ -791,6 +793,11 @@ Parse:
 					if _, ok := langMap[link.Lang]; ok {
 						language.Links =
 							append(language.Links, link)
+					}
+				case "desctree", "descendants tree":
+					descTree := template.ToDescTree()
+					if _, ok := langMap[descTree.Lang]; ok {
+						language.DescTrees = append(language.DescTrees, descTree)
 					}
 				case "etymtree":
 					etymTree := template.ToEtymTree()

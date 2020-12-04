@@ -11,7 +11,7 @@ const (
 	diaer  = '\u0308'
 )
 
-var DefaultLangs = []string{"en", "es", "fr", "la", "LL"}
+var DefaultLangs = []string{"en", "es", "fr", "la", "LL", "fro"}
 var DefaultLangMap map[string]bool
 
 var CanonicalLangs map[string]Lang
@@ -81,6 +81,10 @@ var Langs = map[string]Lang{
 		Code:      "fr",
 		Canonical: "French",
 		Other:     []string{"Modern French"},
+	},
+	"fro": {
+		Code:      "fro",
+		Canonical: "Old French",
 	},
 	"grc": {
 		Code:      "grc",
