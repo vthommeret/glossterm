@@ -43,6 +43,7 @@ type GlossaryEntry struct {
 	Shortcuts    []string
 	NoLeftSpace  bool
 	NoRightSpace bool
+	Multiple     bool
 }
 
 var formOfGlossary = map[string]*GlossaryEntry{
@@ -575,6 +576,12 @@ var formOfGlossary = map[string]*GlossaryEntry{
 		NoLeftSpace:  true,
 		NoRightSpace: true,
 	},
+
+	";": {
+		Type:        "other",
+		NoLeftSpace: true,
+		Multiple:    true,
+	},
 }
 
 var formOfShortcuts = map[string][]string{
@@ -612,7 +619,8 @@ var formOfShortcuts = map[string][]string{
 	"simple present": {"simple", "present"},
 }
 
-const tagSeparator = "//"
+const tagAlternator = "//"
+const tagSeparator = ":"
 
 func init() {
 	for name := range formOfGlossary {
@@ -673,14 +681,9 @@ func (fo *FormOf) DisplayWord() string {
 }
 
 func (fo *FormOf) Text() string {
-	desc := GetFormOfDescription(
-		fo.Form, fo.Tag1, fo.Tag2, fo.Tag3, fo.Tag4, fo.Tag5, fo.Tag6, fo.Tag7, fo.Tag8, fo.Tag9, fo.Tag10,
-	)
-	return fmt.Sprintf("%s %s", desc, fo.DisplayWord())
-}
+	word := fo.DisplayWord()
 
-func GetFormOfDescription(form string, tags ...string) string {
-	resolvedTags := resolveFormOfTags(tags)
+	resolvedTags := resolveFormOfTags(fo.Tag1, fo.Tag2, fo.Tag3, fo.Tag4, fo.Tag5, fo.Tag6, fo.Tag7, fo.Tag8, fo.Tag9, fo.Tag10)
 
 	var entries []*GlossaryEntry
 	for _, tag := range resolvedTags {
@@ -690,29 +693,37 @@ func GetFormOfDescription(form string, tags ...string) string {
 	}
 
 	if len(entries) == 0 {
-		return form
+		return fmt.Sprintf("%s %s", fo.Form, word)
 	}
 
 	parts := []string{}
 	total := len(entries)
+	multiple := false
 	for i, entry := range entries {
 		var space string
 		if (i != total-1) && !entry.NoRightSpace && !entries[i+1].NoLeftSpace {
 			space = " "
 		}
 		parts = append(parts, fmt.Sprintf("%s%s", entry.Name, space))
+		if entry.Multiple {
+			multiple = true
+		}
 	}
 
-	return fmt.Sprintf("%s of", strings.Join(parts, ""))
+	if multiple {
+		return fmt.Sprintf("inflection of %s: %s", word, strings.Join(parts, ""))
+	}
+
+	return fmt.Sprintf("%s of %s", strings.Join(parts, ""), word)
 }
 
-func resolveFormOfTags(tags []string) []string {
+func resolveFormOfTags(tags ...string) []string {
 	var expanded []string
 
 	// Convert "a//b//c" tags to "a|/|b|/|c" for further processing
 	for _, tag := range tags {
-		if strings.Contains(tag, tagSeparator) {
-			split := strings.Split(tag, tagSeparator)
+		if strings.Contains(tag, tagAlternator) {
+			split := strings.Split(tag, tagAlternator)
 			n := len(split)
 			for i, t := range split {
 				expanded = append(expanded, t)
@@ -725,14 +736,26 @@ func resolveFormOfTags(tags []string) []string {
 		}
 	}
 
+	var furtherExpanded []string
+
+	// Convert "a:b" to "a|b"
+	for _, tag := range expanded {
+		if strings.Contains(tag, tagSeparator) {
+			split := strings.Split(tag, tagSeparator)
+			furtherExpanded = append(furtherExpanded, split...)
+		} else {
+			furtherExpanded = append(furtherExpanded, tag)
+		}
+	}
+
 	var resolved []string
 
 	// Resolve shortuts
-	for _, tag := range expanded {
+	for _, tag := range furtherExpanded {
 		if _, ok := formOfGlossary[tag]; ok {
 			resolved = append(resolved, tag)
 		} else if tags, ok := formOfShortcuts[tag]; ok {
-			resolved = append(resolved, resolveFormOfTags(tags)...)
+			resolved = append(resolved, resolveFormOfTags(tags...)...)
 		}
 	}
 
