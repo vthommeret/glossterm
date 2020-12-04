@@ -30,20 +30,22 @@ func init() {
 	flag.Parse()
 }
 
-func findRoots(rootMap map[string]string, word string, allDefns [][]gt.Definition) {
+func findRoots(rootMap map[string][]string, word string, allDefns [][]gt.Definition) {
 	for _, defns := range allDefns {
 		for _, defn := range defns {
 			if defn.Root != nil {
-				rootMap[word] = defn.Root.Name
+				rootMap[word] = append(rootMap[word], defn.Root.Name)
 			}
 		}
 	}
 }
 
-func createQuads(rootMap map[string]string, typ, lang, word, fromLang, fromWord string) []quad.Quad {
+func createQuads(rootMap map[string][]string, typ, lang, word, fromLang, fromWord string) []quad.Quad {
 	var quads []quad.Quad
-	if root, ok := rootMap[fromWord]; ok {
-		quads = append(quads, createQuad(typ, lang, word, fromLang, root))
+	if roots, ok := rootMap[fromWord]; ok {
+		for _, root := range roots {
+			quads = append(quads, createQuad(typ, lang, word, fromLang, root))
+		}
 	}
 	quads = append(quads, createQuad(typ, lang, word, fromLang, fromWord))
 	return quads
@@ -69,7 +71,7 @@ func main() {
 		log.Fatalf("Unable to get %q words: %s", input, err)
 	}
 
-	rootMap := map[string]string{}
+	rootMap := map[string][]string{}
 
 	for _, w := range words {
 		if lang, ok := w.Languages[parentLang]; ok {
