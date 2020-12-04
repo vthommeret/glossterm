@@ -612,6 +612,8 @@ var formOfShortcuts = map[string][]string{
 	"simple present": {"simple", "present"},
 }
 
+const tagSeparator = "//"
+
 func init() {
 	for name := range formOfGlossary {
 		formOfGlossary[name].Name = name
@@ -659,6 +661,7 @@ func (tpl *Template) ToFormOf(form string, tags ...string) FormOf {
 	tpl.toConcrete(reflect.TypeOf(fo), reflect.ValueOf(&fo))
 	fo.Word = toEntryName(fo.Lang, fo.Word)
 	fo.Form = form
+
 	return fo
 }
 
@@ -677,10 +680,10 @@ func (fo *FormOf) Text() string {
 }
 
 func GetFormOfDescription(form string, tags ...string) string {
-	expandedTags := expandFormOfTags(tags)
+	resolvedTags := resolveFormOfTags(tags)
 
 	var entries []*GlossaryEntry
-	for _, tag := range expandedTags {
+	for _, tag := range resolvedTags {
 		if entry, ok := formOfGlossary[tag]; ok {
 			entries = append(entries, entry)
 		}
@@ -703,16 +706,37 @@ func GetFormOfDescription(form string, tags ...string) string {
 	return fmt.Sprintf("%s of", strings.Join(parts, ""))
 }
 
-func expandFormOfTags(tags []string) []string {
+func resolveFormOfTags(tags []string) []string {
 	var expanded []string
+
+	// Convert "a//b//c" tags to "a|/|b|/|c" for further processing
 	for _, tag := range tags {
-		if _, ok := formOfGlossary[tag]; ok {
+		if strings.Contains(tag, tagSeparator) {
+			split := strings.Split(tag, tagSeparator)
+			n := len(split)
+			for i, t := range split {
+				expanded = append(expanded, t)
+				if i != n-1 {
+					expanded = append(expanded, "/")
+				}
+			}
+		} else {
 			expanded = append(expanded, tag)
-		} else if tags, ok := formOfShortcuts[tag]; ok {
-			expanded = append(expanded, expandFormOfTags(tags)...)
 		}
 	}
-	return expanded
+
+	var resolved []string
+
+	// Resolve shortuts
+	for _, tag := range expanded {
+		if _, ok := formOfGlossary[tag]; ok {
+			resolved = append(resolved, tag)
+		} else if tags, ok := formOfShortcuts[tag]; ok {
+			resolved = append(resolved, resolveFormOfTags(tags)...)
+		}
+	}
+
+	return resolved
 }
 
 func (tpl *Template) ToFormOfGeneric() FormOfGeneric {
