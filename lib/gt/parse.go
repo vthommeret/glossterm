@@ -817,6 +817,10 @@ Parse:
 					if _, ok := langMap[descTree.Lang]; ok {
 						language.DescTrees = append(language.DescTrees, descTree)
 						language.descendantLang = &descTree.Lang
+
+						// Also add descendant tree as a descendant
+						desc := tpl.Descendant{Lang: descTree.Lang, Word: descTree.Word}
+						language.Descendants = append(language.Descendants, desc)
 					}
 				case "etymtree":
 					etymTree := template.ToEtymTree()
