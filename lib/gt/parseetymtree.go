@@ -36,7 +36,7 @@ Parse:
 		case itemEOF:
 			if listItem != nil {
 				descendants.Links =
-					append(descendants.Links, listItem.TplLinks(langMap)...)
+					append(descendants.Links, listItem.TplLinks(langMap, p.Title)...)
 			}
 			break Parse
 		case itemUnorderedListItemStart:
@@ -54,7 +54,7 @@ Parse:
 			// tokens and ignore otherwise unimportant whitespace.
 			if listItem != nil && strings.Contains(i.val, "\n") {
 				descendants.Links =
-					append(descendants.Links, listItem.TplLinks(langMap)...)
+					append(descendants.Links, listItem.TplLinks(langMap, p.Title)...)
 				listItem = nil
 			}
 		case itemLeftTemplate:

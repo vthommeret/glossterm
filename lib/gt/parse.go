@@ -17,9 +17,11 @@ type Word struct {
 }
 
 type Language struct {
-	Code        string           `firestore:"code"`
-	Definitions *Definitions     `json:"definitions,omitempty" firestore:"definitions,omitempty"`
-	Etymology   *Etymology       `json:"etymology,omitempty" firestore:"etymology,omitempty"`
+	Code        string       `firestore:"code"`
+	Definitions *Definitions `json:"definitions,omitempty" firestore:"definitions,omitempty"`
+	Etymology   *Etymology   `json:"etymology,omitempty" firestore:"etymology,omitempty"`
+	// TODO: Clean up Links / represent as descendants?
+	// Partly used by legacy etymtree templates. Links are only used for descendants.
 	Links       []tpl.Link       `json:"links,omitempty" firestore:"links,omitempty"`
 	Descendants []tpl.Descendant `json:"descendants,omitempty" firestore:"descendants,omitempty"`
 	// TODO: Rename EtymTrees. May need to re-write DB.
@@ -30,6 +32,8 @@ type Language struct {
 	section      sectionType
 	subSection   sectionType
 	sectionDepth int
+
+	descendantLang *string
 
 	listItem             *ListItem
 	listItemDepth        int
@@ -259,14 +263,16 @@ func (l *Language) flushDefinition() {
 			}
 		}
 	}
-	l.definitionBuffer = nil
-	l.definitionRoot = nil
+
 	l.listItemDepth = 0
 	l.inListItemDefinition = false
 	l.inListItemSublist = false
+
+	l.definitionBuffer = nil
+	l.definitionRoot = nil
 }
 
-func (l *Language) shouldCaptureLink() bool {
+func (l *Language) shouldDefineLink() bool {
 	return l.definitionBuffer != nil && l.listItemDepth == 1 && !l.inListItemDefinition && !l.inListItemSublist
 }
 
@@ -548,7 +554,7 @@ Parse:
 			if language != nil {
 				if language.listItem != nil {
 					language.Links =
-						append(language.Links, language.listItem.TplLinks(langMap)...)
+						append(language.Links, language.listItem.TplLinks(langMap, w.Name)...)
 				}
 				if !language.IsEmpty() {
 					if w.Languages == nil {
@@ -586,7 +592,7 @@ Parse:
 			if language != nil {
 				if language.listItem != nil {
 					language.Links =
-						append(language.Links, language.listItem.TplLinks(langMap)...)
+						append(language.Links, language.listItem.TplLinks(langMap, w.Name)...)
 				}
 			}
 		case itemHeaderEnd:
@@ -622,32 +628,42 @@ Parse:
 		case itemListItemEnd:
 			if language != nil {
 				language.flushDefinition()
+				language.descendantLang = nil
 			}
 		case itemLeftLink:
-			if language != nil && language.shouldCaptureLink() {
+			if language != nil {
 				language.linkBuffer = &LinkBuffer{}
 			}
 		case itemLink:
 			if language != nil {
 				if language.listItem != nil {
 					language.listItem.Links = append(language.listItem.Links, i.val)
-				} else if language.shouldCaptureLink() {
+				} else {
 					language.linkBuffer.Link = i.val
 				}
 			}
 		case itemLinkName:
-			if language != nil && language.shouldCaptureLink() {
+			if language != nil {
 				language.linkBuffer.Name = &i.val
 			}
 		case itemRightLink:
-			if language != nil && language.shouldCaptureLink() {
-				var link string
-				if language.linkBuffer.Name != nil {
-					link = *language.linkBuffer.Name
-				} else {
-					link = language.linkBuffer.Link
+			if language != nil {
+				if language.shouldDefineLink() {
+					var link string
+					if language.linkBuffer.Name != nil {
+						link = *language.linkBuffer.Name
+					} else {
+						link = language.linkBuffer.Link
+					}
+					language.definitionBuffer = append(language.definitionBuffer, link)
+				} else if language.subSection == descendantsSection {
+					if language.descendantLang != nil {
+						tplLink := toTplLink(langMap, *language.descendantLang, language.linkBuffer.Link, w.Name)
+						if tplLink != nil {
+							language.Links = append(language.Links, *tplLink)
+						}
+					}
 				}
-				language.definitionBuffer = append(language.definitionBuffer, link)
 				language.linkBuffer = nil
 			}
 		case itemText:
@@ -787,17 +803,20 @@ Parse:
 					if _, ok := langMap[desc.Lang]; ok {
 						language.Descendants =
 							append(language.Descendants, desc)
+						language.descendantLang = &desc.Lang
 					}
 				case "l", "link":
 					link := template.ToLink()
 					if _, ok := langMap[link.Lang]; ok {
 						language.Links =
 							append(language.Links, link)
+						language.descendantLang = &link.Lang
 					}
 				case "desctree", "descendants tree":
 					descTree := template.ToDescTree()
 					if _, ok := langMap[descTree.Lang]; ok {
 						language.DescTrees = append(language.DescTrees, descTree)
+						language.descendantLang = &descTree.Lang
 					}
 				case "etymtree":
 					etymTree := template.ToEtymTree()
@@ -808,6 +827,7 @@ Parse:
 							}
 							language.DescendantTrees =
 								append(language.DescendantTrees, etymTree)
+							language.descendantLang = &etymTree.Lang
 						}
 					}
 				}
@@ -938,24 +958,31 @@ Parse:
 	return w, nil
 }
 
-func (li *ListItem) TplLinks(langMap map[string]bool) (ls []tpl.Link) {
+func (li *ListItem) TplLinks(langMap map[string]bool, parent string) (ls []tpl.Link) {
 	for _, link := range li.Links {
-		if strings.Contains(link, ":") {
-			continue
-		}
-		parts := strings.Split(link, "#")
-		link = parts[0]
-		var c string
-		if l, ok := lang.CanonicalLangs[li.Prefix]; ok {
-			if _, ok := langMap[l.Code]; ok {
-				c = l.Code
-			} else {
-				continue
+		if canonical, ok := lang.CanonicalLangs[li.Prefix]; ok {
+			if _, ok := langMap[canonical.Code]; ok {
+				tplLink := toTplLink(langMap, canonical.Code, link, parent)
+				if tplLink == nil {
+					continue
+				}
+				ls = append(ls, *tplLink)
 			}
-		} else {
-			continue
 		}
-		ls = append(ls, tpl.Link{Lang: c, Word: link})
 	}
 	return ls
+}
+
+func toTplLink(langMap map[string]bool, lang, linkText string, parent string) *tpl.Link {
+	if strings.Contains(linkText, ":") {
+		return nil
+	}
+	parts := strings.Split(linkText, "#")
+	var link string
+	if parts[0] != "" {
+		link = parts[0]
+	} else {
+		link = parent
+	}
+	return &tpl.Link{Lang: lang, Word: link}
 }
