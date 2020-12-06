@@ -14,7 +14,7 @@ const (
 	apostrophe = '\u0027'
 )
 
-var DefaultLangs = []string{"en", "enm", "es", "fr", "la", "LL", "fro", "frm"}
+var DefaultLangs = []string{"en", "ang", "enm", "es", "fr", "fro", "frm", "la", "LL"}
 var DefaultLangMap map[string]bool
 
 var CanonicalLangs map[string]Lang
@@ -74,6 +74,17 @@ var Langs = map[string]Lang{
 		Code:      "en",
 		Canonical: "English",
 		Other:     []string{"Modern English", "New English", "Hawaiian Creole English", "Hawai'ian Creole English", "Hawaiian Creole", "Hawai'ian Creole", "Polari", "Yinglish"},
+	},
+	"ang": {
+		Code:      "ang",
+		Canonical: "Old English",
+		Other:     []string{"Anglo-Saxon"},
+		EntryNameMap: map[rune]rune{
+			'Ā': 'A', 'Á': 'A', 'ā': 'a', 'á': 'a', 'Ǣ': 'Æ', 'Ǽ': 'Æ', 'ǣ': 'æ', 'ǽ': 'æ', 'Ċ': 'C', 'ċ': 'c', 'Ē': 'E', 'É': 'E', 'ē': 'e', 'é': 'e', 'Ġ': 'G', 'ġ': 'g', 'Ī': 'I', 'Í': 'I', 'ī': 'i', 'í': 'i', 'Ō': 'O', 'Ó': 'O', 'ō': 'o', 'ó': 'o', 'Ū': 'U', 'Ú': 'U', 'ū': 'u', 'ú': 'u', 'Ȳ': 'Y', 'Ý': 'Y', 'ȳ': 'y', 'ý': 'y', 'Ƿ': 'W', 'ƿ': 'w',
+		},
+		EntryNameStrip: []rune{
+			macron, acute, dotabove,
+		},
 	},
 	"enm": {
 		Code:      "enm",
