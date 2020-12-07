@@ -40,7 +40,7 @@ func findRoots(rootMap map[string][]string, word string, allDefns [][]gt.Definit
 	}
 }
 
-func createQuads(rootMap map[string][]string, typ, lang, word, fromLang, fromWord string) []quad.Quad {
+func createAncestorQuads(rootMap map[string][]string, typ, lang, word, fromLang, fromWord string) []quad.Quad {
 	var quads []quad.Quad
 	if roots, ok := rootMap[fromWord]; ok {
 		for _, root := range roots {
@@ -64,6 +64,19 @@ func createQuad(typ, lang, word, fromLang, fromWord string) quad.Quad {
 	return q
 }
 
+func uniqueQuads(qs []quad.Quad) []quad.Quad {
+	unique := []quad.Quad{}
+	seen := map[string]bool{}
+	for _, q := range qs {
+		k := fmt.Sprintf("%s,%s,%s", q.Subject, q.Predicate, q.Object)
+		if _, ok := seen[k]; !ok {
+			unique = append(unique, q)
+		}
+		seen[k] = true
+	}
+	return unique
+}
+
 func main() {
 	// Get words.
 	words, err := gt.GetWords(input)
@@ -84,7 +97,6 @@ func main() {
 	// Prepare quads
 
 	count := 0
-	quadCount := 0
 
 	var quads []quad.Quad
 
@@ -94,39 +106,46 @@ func main() {
 			// Latin ancestors
 			if _, ok := gt.SourceLangs[l.Code]; ok {
 				if l.Etymology != nil {
+					for _, c := range l.Etymology.Cognates {
+						if c.Lang == parentLang {
+							allQuads := createAncestorQuads(rootMap, "cognate", l.Code, w.Name, c.Lang, c.Word)
+							quads = append(quads, allQuads...)
+						}
+					}
+					for _, s := range l.Etymology.Suffixes {
+						if s.Lang == parentLang {
+							allQuads := createAncestorQuads(rootMap, "suffix", l.Code, w.Name, s.Lang, s.Root)
+							quads = append(quads, allQuads...)
+						}
+					}
 					for _, b := range l.Etymology.Borrows {
 						if b.FromLang == parentLang {
-							allQuads := createQuads(rootMap, "borrowing-from", l.Code, w.Name, b.FromLang, b.FromWord)
+							allQuads := createAncestorQuads(rootMap, "borrowing-from", l.Code, w.Name, b.FromLang, b.FromWord)
 							quads = append(quads, allQuads...)
-							quadCount += len(allQuads)
 						}
 					}
 					for _, d := range l.Etymology.Derived {
 						if d.FromLang == parentLang {
-							allQuads := createQuads(rootMap, "derived-from", l.Code, w.Name, d.FromLang, d.FromWord)
+							allQuads := createAncestorQuads(rootMap, "derived-from", l.Code, w.Name, d.FromLang, d.FromWord)
 							quads = append(quads, allQuads...)
-							quadCount += len(allQuads)
 						}
 					}
 					for _, i := range l.Etymology.Inherited {
 						if i.FromLang == parentLang {
-							allQuads := createQuads(rootMap, "inherited-from", l.Code, w.Name, i.FromLang, i.FromWord)
+							allQuads := createAncestorQuads(rootMap, "inherited-from", l.Code, w.Name, i.FromLang, i.FromWord)
 							quads = append(quads, allQuads...)
-							quadCount += len(allQuads)
 						}
 					}
 					for _, m := range l.Etymology.Mentions {
 						if m.Lang == parentLang {
-							allQuads := createQuads(rootMap, "mentions", l.Code, w.Name, m.Lang, m.Word)
+							allQuads := createAncestorQuads(rootMap, "mentions", l.Code, w.Name, m.Lang, m.Word)
 							quads = append(quads, allQuads...)
-							quadCount += len(allQuads)
 						}
 					}
 					for _, e := range l.Etymology.Links {
 						if e.Lang == parentLang {
-							allQuads := createQuads(rootMap, "etyl", l.Code, w.Name, e.Lang, e.Word)
+							allQuads := createAncestorQuads(rootMap, "etyl", l.Code, w.Name, e.Lang, e.Word)
 							quads = append(quads, allQuads...)
-							quadCount += len(allQuads)
 						}
 					}
 				}
@@ -134,66 +153,15 @@ func main() {
 				// Latin descendants
 			} else if l.Code == parentLang {
 
-				if l.Etymology != nil {
-					for _, c := range l.Etymology.Cognates {
-						if _, ok := gt.SourceLangs[c.Lang]; ok {
-							quads = append(quads, quad.Make(
-								fmt.Sprintf("%s/%s", l.Code, w.Name),
-								"cognate",
-								fmt.Sprintf("%s/%s", c.Lang, c.Word),
-								nil,
-							))
-							if verbose {
-								fmt.Printf("%s/%s cognate %s/%s\n", l.Code, w.Name, c.Lang, c.Word)
-							}
-							quadCount++
-						}
-					}
-
-					for _, s := range l.Etymology.Suffixes {
-						if _, ok := gt.SourceLangs[s.Lang]; ok {
-							quads = append(quads, quad.Make(
-								fmt.Sprintf("%s/%s", l.Code, w.Name),
-								"suffix",
-								fmt.Sprintf("%s/%s", s.Lang, s.Root),
-								nil,
-							))
-							if verbose {
-								fmt.Printf("%s/%s suffix %s/%s\n", l.Code, w.Name, s.Lang, s.Root)
-							}
-							quadCount++
-						}
-					}
-				}
-
 				// Map both Links and Descendants to "descendant" for graph search
-
 				for _, ln := range l.Links {
 					if _, ok := gt.SourceLangs[ln.Lang]; ok {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"descendant",
-							fmt.Sprintf("%s/%s", ln.Lang, ln.Word),
-							nil,
-						))
-						if verbose {
-							fmt.Printf("%s/%s descendant (link) %s/%s\n", l.Code, w.Name, ln.Lang, ln.Word)
-						}
-						quadCount++
+						quads = append(quads, createQuad("descendant", l.Code, w.Name, ln.Lang, ln.Word))
 					}
 				}
 				for _, d := range l.Descendants {
 					if _, ok := gt.SourceLangs[d.Lang]; ok {
-						quads = append(quads, quad.Make(
-							fmt.Sprintf("%s/%s", l.Code, w.Name),
-							"descendant",
-							fmt.Sprintf("%s/%s", d.Lang, d.Word),
-							nil,
-						))
-						if verbose {
-							fmt.Printf("%s/%s descendant %s/%s\n", l.Code, w.Name, d.Lang, d.Word)
-						}
-						quadCount++
+						quads = append(quads, createQuad("descendant", l.Code, w.Name, d.Lang, d.Word))
 					}
 				}
 
@@ -201,6 +169,8 @@ func main() {
 		}
 		count++
 	}
+
+	quads = uniqueQuads(quads)
 
 	// Create nquads file
 
@@ -220,5 +190,5 @@ func main() {
 	w.Flush()
 	f.Close()
 
-	fmt.Printf("Read %d words, wrote %d quads.", count, quadCount)
+	fmt.Printf("Read %d words, wrote %d quads.", count, len(quads))
 }

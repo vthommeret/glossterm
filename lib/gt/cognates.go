@@ -50,13 +50,12 @@ func findParents(p *path.Path) *path.Path {
 		Or(p.Out("inherited-from")).
 		Or(p.Out("mentions")).
 		Or(p.Out("etyl")).
-		Or(p.Out("suffix"))
+		Or(p.Out("suffix")).
+		Or(p.Out("cognate"))
 }
 
 func findChildren(p *path.Path) *path.Path {
-	return p.
-		Out("descendant").
-		Or(p.Out("cognate"))
+	return p.Out("descendant")
 }
 
 /*
@@ -72,6 +71,7 @@ function findParents(g) {
     .or(g.out("mentions"))
     .or(g.out("etyl"))
     .or(g.out("suffix"))
+    .or(g.out("cognate"))
 }
 
 var parents = findParents(input)
