@@ -85,7 +85,7 @@ Parse:
 	done <- r
 }
 
-// ParseXMLWords returns words and descendants for cmd/gtstream.
+// ParseXMLWords returns words and descendants for cmd/gtparse.
 func ParseXMLWords(r io.ReadCloser, words chan<- Word, descendants chan<- Descendants, errors chan<- Error, done chan<- io.ReadCloser) {
 	d := xml.NewDecoder(r)
 
