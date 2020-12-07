@@ -8,8 +8,9 @@ import (
 )
 
 type Descendants struct {
-	Word  string
-	Links []tpl.Link
+	Word        string
+	Links       []tpl.Link
+	Descendants []tpl.Descendant
 }
 
 // Parses a given etymology tree (e.g. https://en.wiktionary.org/wiki/Template:etymtree/la/germanus)
@@ -71,6 +72,11 @@ Parse:
 				break
 			}
 			switch template.Action {
+			case "desc", "descendant":
+				desc := template.ToDescendant()
+				if _, ok := langMap[desc.Lang]; ok {
+					descendants.Descendants = append(descendants.Descendants, desc)
+				}
 			case "l", "link":
 				link := template.ToLink()
 				if _, ok := langMap[link.Lang]; ok {
