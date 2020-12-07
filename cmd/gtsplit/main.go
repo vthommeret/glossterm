@@ -16,7 +16,7 @@ import (
 	"github.com/vthommeret/glossterm/lib/gt"
 )
 
-const total = 6400000 // approximate
+const total = 6500000 // approximate
 const step = total / 100
 
 const defaultInputFile = "data/en.xml.bz2"

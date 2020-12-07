@@ -912,12 +912,6 @@ Parse:
 					if language.definitionBuffer != nil {
 						language.definitionBuffer = append(language.definitionBuffer, frac.Text())
 					}
-					// TODO: Remove
-				case "feminine noun of":
-					femNoun := template.ToFemNoun()
-					if language.definitionBuffer != nil {
-						language.definitionBuffer = append(language.definitionBuffer, femNoun.Text())
-					}
 
 					// Spanish forms
 				case "es-verb form of":
