@@ -33,6 +33,7 @@ type Language struct {
 	subSection   sectionType
 	sectionDepth int
 
+	etylLang       *string
 	descendantLang *string
 
 	listItem             *ListItem
@@ -54,6 +55,7 @@ type Etymology struct {
 	Inherited []tpl.Inherited `json:"inherited,omitempty" firestore:"inherited,omitempty"`
 	Prefixes  []tpl.Prefix    `json:"prefixes,omitempty" firestore:"prefixes,omitempty"`
 	Suffixes  []tpl.Suffix    `json:"suffixes,omitempty" firestore:"suffixes,omitempty"`
+	Links     []tpl.Link      `json:"links,omitempty" firestore:"links,omitempty"`
 }
 
 type LinkBuffer struct {
@@ -628,6 +630,7 @@ Parse:
 		case itemListItemEnd:
 			if language != nil {
 				language.flushDefinition()
+				language.etylLang = nil
 				language.descendantLang = nil
 			}
 		case itemLeftLink:
@@ -656,6 +659,16 @@ Parse:
 						link = language.linkBuffer.Link
 					}
 					language.definitionBuffer = append(language.definitionBuffer, link)
+				} else if language.section == etymologySection {
+					if language.etylLang != nil {
+						tplLink := toTplLink(langMap, *language.etylLang, language.linkBuffer.Link, w.Name)
+						if tplLink != nil {
+							if language.Etymology == nil {
+								language.Etymology = &Etymology{}
+							}
+							language.Etymology.Links = append(language.Etymology.Links, *tplLink)
+						}
+					}
 				} else if language.subSection == descendantsSection {
 					if language.descendantLang != nil {
 						tplLink := toTplLink(langMap, *language.descendantLang, language.linkBuffer.Link, w.Name)
@@ -665,6 +678,7 @@ Parse:
 					}
 				}
 				language.linkBuffer = nil
+				language.etylLang = nil
 			}
 		case itemText:
 			if inLanguageHeader {
@@ -724,6 +738,9 @@ Parse:
 			if language == nil || template == nil || templateDepth != 0 {
 				break
 			}
+
+			var setEtylLang bool
+
 			if language.section == etymologySection {
 				switch template.Action {
 				case "cog", "cognate":
@@ -795,6 +812,15 @@ Parse:
 						language.Etymology.Suffixes =
 							append(language.Etymology.Suffixes, suffix)
 					}
+				case "etyl":
+					etyl := template.ToEtyl()
+					if _, ok := langMap[etyl.Lang]; ok {
+						language.etylLang = &etyl.Lang
+						setEtylLang = true
+					}
+				}
+				if !setEtylLang {
+					language.etylLang = nil
 				}
 			} else if language.subSection == descendantsSection {
 				switch template.Action {

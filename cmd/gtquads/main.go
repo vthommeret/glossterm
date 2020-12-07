@@ -122,6 +122,13 @@ func main() {
 							quadCount += len(allQuads)
 						}
 					}
+					for _, e := range l.Etymology.Links {
+						if e.Lang == parentLang {
+							allQuads := createQuads(rootMap, "etyl", l.Code, w.Name, e.Lang, e.Word)
+							quads = append(quads, allQuads...)
+							quadCount += len(allQuads)
+						}
+					}
 				}
 
 				// Latin descendants

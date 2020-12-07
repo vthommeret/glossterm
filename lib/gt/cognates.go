@@ -49,6 +49,7 @@ func findParents(p *path.Path) *path.Path {
 		Or(p.Out("derived-from")).
 		Or(p.Out("inherited-from")).
 		Or(p.Out("mentions")).
+		Or(p.Out("etyl")).
 		Or(p.Out("suffix"))
 }
 
@@ -69,6 +70,7 @@ function findParents(g) {
     .or(g.out("derived-from"))
     .or(g.out("inherited-from"))
     .or(g.out("mentions"))
+    .or(g.out("etyl"))
     .or(g.out("suffix"))
 }
 
