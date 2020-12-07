@@ -567,10 +567,6 @@ Parse:
 			return Word{}, fmt.Errorf("unable to parse: %s", i.val)
 		case itemEOF:
 			if language != nil {
-				if language.listItem != nil {
-					language.Links =
-						append(language.Links, language.listItem.TplLinks(langMap, w.Name)...)
-				}
 				if !language.IsEmpty() {
 					if w.Languages == nil {
 						w.Languages = map[string]*Language{}
@@ -602,12 +598,6 @@ Parse:
 				inSectionHeader = true
 				if language != nil {
 					language.sectionDepth = i.depth - 1
-				}
-			}
-			if language != nil {
-				if language.listItem != nil {
-					language.Links =
-						append(language.Links, language.listItem.TplLinks(langMap, w.Name)...)
 				}
 			}
 		case itemHeaderEnd:
@@ -645,6 +635,10 @@ Parse:
 				language.flushDefinition()
 				language.etylLang = nil
 				language.descendantLang = nil
+				if language.listItem != nil {
+					language.Links =
+						append(language.Links, language.listItem.TplLinks(langMap, w.Name)...)
+				}
 			}
 		case itemLeftLink:
 			if language != nil {
