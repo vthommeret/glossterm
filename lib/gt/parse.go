@@ -74,6 +74,7 @@ type Definitions struct {
 	Conjunctions  []Definition `json:"conjunctions,omitempty" firestore:"conjunctions,omitempty"`
 	Interjections []Definition `json:"interjections,omitempty" firestore:"interjections,omitempty"`
 	Numerals      []Definition `json:"numerals,omitempty" firestore:"numerals,omitempty"`
+	Numbers       []Definition `json:"numbers,omitempty" firestore:"numbers,omitempty"`
 	Particles     []Definition `json:"particles,omitempty" firestore:"particles,omitempty"`
 	Determiners   []Definition `json:"determiners,omitempty" firestore:"determiners,omitempty"`
 }
@@ -100,6 +101,7 @@ func (l *Language) AllDefinitions() [][]Definition {
 		l.Definitions.Conjunctions,
 		l.Definitions.Interjections,
 		l.Definitions.Numerals,
+		l.Definitions.Numbers,
 		l.Definitions.Particles,
 		l.Definitions.Determiners,
 	}
@@ -139,6 +141,9 @@ func (l *Language) IsEmpty() bool {
 			return false
 		}
 		if l.Definitions.Numerals != nil {
+			return false
+		}
+		if l.Definitions.Numbers != nil {
 			return false
 		}
 		if l.Definitions.Particles != nil {
@@ -250,6 +255,12 @@ func (l *Language) flushDefinition() {
 				}
 				l.Definitions.Numerals =
 					append(l.Definitions.Numerals, Definition{Text: definition, Root: root})
+			case numberSection:
+				if l.Definitions == nil {
+					l.Definitions = &Definitions{}
+				}
+				l.Definitions.Numbers =
+					append(l.Definitions.Numbers, Definition{Text: definition, Root: root})
 			case particleSection:
 				if l.Definitions == nil {
 					l.Definitions = &Definitions{}
@@ -294,6 +305,7 @@ const (
 	conjunctionSection
 	interjectionSection
 	numeralSection
+	numberSection
 	particleSection
 	determinerSection
 
@@ -318,6 +330,7 @@ var wordTypeMap = map[string]sectionType{
 	"Conjunction":  conjunctionSection,
 	"Interjection": interjectionSection,
 	"Numeral":      numeralSection,
+	"Number":       numberSection,
 	"Particle":     particleSection,
 	"Determiner":   determinerSection,
 }
@@ -522,7 +535,7 @@ func init() {
 }
 
 func definitionSection(section sectionType) bool {
-	return section == nounSection || section == adjectiveSection || section == verbSection || section == adverbSection || section == articleSection || section == prepositionSection || section == pronounSection || section == conjunctionSection || section == interjectionSection || section == numeralSection || section == particleSection || section == determinerSection
+	return section == nounSection || section == adjectiveSection || section == verbSection || section == adverbSection || section == articleSection || section == prepositionSection || section == pronounSection || section == conjunctionSection || section == interjectionSection || section == numeralSection || section == numberSection || section == particleSection || section == determinerSection
 }
 
 // Parses a given word (e.g. https://en.wiktionary.org/wiki/hombre).
