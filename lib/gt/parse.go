@@ -547,6 +547,10 @@ func ParseWord(p Page, langMap map[string]bool) (Word, error) {
 		Name: name,
 	}
 
+	if !validWord(name) {
+		return w, nil
+	}
+
 	var inLanguageHeader bool
 	var inSectionHeader bool
 
@@ -752,7 +756,7 @@ Parse:
 				switch template.Action {
 				case "cog", "cognate":
 					cognate := template.ToCognate()
-					if _, ok := langMap[cognate.Lang]; ok {
+					if _, ok := langMap[cognate.Lang]; ok && validWord(cognate.Word) {
 						if language.Etymology == nil {
 							language.Etymology = &Etymology{}
 						}
@@ -761,7 +765,7 @@ Parse:
 					}
 				case "m", "mention":
 					mention := template.ToMention()
-					if _, ok := langMap[mention.Lang]; ok {
+					if _, ok := langMap[mention.Lang]; ok && validWord(mention.Word) {
 						if language.Etymology == nil {
 							language.Etymology = &Etymology{}
 						}
@@ -770,7 +774,7 @@ Parse:
 					}
 				case "bor", "borrowing":
 					borrow := template.ToBorrow()
-					if _, ok := langMap[borrow.Lang]; ok {
+					if _, ok := langMap[borrow.Lang]; ok && validWord(borrow.FromWord) {
 						if _, ok := langMap[borrow.FromLang]; ok {
 							if language.Etymology == nil {
 								language.Etymology = &Etymology{}
@@ -781,7 +785,7 @@ Parse:
 					}
 				case "der", "derived":
 					derived := template.ToDerived()
-					if _, ok := langMap[derived.Lang]; ok {
+					if _, ok := langMap[derived.Lang]; ok && validWord(derived.FromWord) {
 						if _, ok := langMap[derived.FromLang]; ok {
 							if language.Etymology == nil {
 								language.Etymology = &Etymology{}
@@ -792,7 +796,7 @@ Parse:
 					}
 				case "inh", "inherited":
 					inherited := template.ToInherited()
-					if _, ok := langMap[inherited.Lang]; ok {
+					if _, ok := langMap[inherited.Lang]; ok && validWord(inherited.FromWord) {
 						if _, ok := langMap[inherited.FromLang]; ok {
 							if language.Etymology == nil {
 								language.Etymology = &Etymology{}
@@ -803,7 +807,7 @@ Parse:
 					}
 				case "prefix":
 					prefix := template.ToPrefix()
-					if _, ok := langMap[prefix.Lang]; ok {
+					if _, ok := langMap[prefix.Lang]; ok && validWord(prefix.Root) {
 						if language.Etymology == nil {
 							language.Etymology = &Etymology{}
 						}
@@ -812,7 +816,7 @@ Parse:
 					}
 				case "suffix":
 					suffix := template.ToSuffix()
-					if _, ok := langMap[suffix.Lang]; ok {
+					if _, ok := langMap[suffix.Lang]; ok && validWord(suffix.Root) {
 						if language.Etymology == nil {
 							language.Etymology = &Etymology{}
 						}
@@ -833,21 +837,21 @@ Parse:
 				switch template.Action {
 				case "desc", "descendant":
 					desc := template.ToDescendant()
-					if _, ok := langMap[desc.Lang]; ok {
+					if _, ok := langMap[desc.Lang]; ok && validWord(desc.Word) {
 						language.Descendants =
 							append(language.Descendants, desc)
 						language.descendantLang = &desc.Lang
 					}
 				case "l", "link":
 					link := template.ToLink()
-					if _, ok := langMap[link.Lang]; ok {
+					if _, ok := langMap[link.Lang]; ok && validWord(link.Word) {
 						language.Links =
 							append(language.Links, link)
 						language.descendantLang = &link.Lang
 					}
 				case "desctree", "descendants tree":
 					descTree := template.ToDescTree()
-					if _, ok := langMap[descTree.Lang]; ok {
+					if _, ok := langMap[descTree.Lang]; ok && validWord(descTree.Word) {
 						language.DescTrees = append(language.DescTrees, descTree)
 						language.descendantLang = &descTree.Lang
 
@@ -857,7 +861,7 @@ Parse:
 					}
 				case "etymtree":
 					etymTree := template.ToEtymTree()
-					if _, ok := langMap[etymTree.Lang]; ok {
+					if _, ok := langMap[etymTree.Lang]; ok && validWord(etymTree.Word) {
 						if _, ok := langMap[etymTree.RootLang]; ok || etymTree.RootLang == "" {
 							if etymTree.Word == "" {
 								etymTree.Word = w.Name
@@ -1016,4 +1020,10 @@ func toTplLink(langMap map[string]bool, lang, linkText string, parent string) *t
 		link = parent
 	}
 	return &tpl.Link{Lang: lang, Word: link}
+}
+
+// Want to track full words / not prefixes and suffixes
+func validWord(w string) bool {
+	w = strings.TrimSpace(w)
+	return w != "" && w[0] != '-' && w[len(w)-1] != '-'
 }

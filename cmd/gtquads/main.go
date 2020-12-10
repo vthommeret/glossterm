@@ -48,6 +48,7 @@ func createAncestorQuads(rootMap map[string][]string, typ, lang, word, fromLang,
 		}
 	}
 	quads = append(quads, createQuad(typ, lang, word, fromLang, fromWord))
+	quads = append(quads, reverseQuads(quads)...)
 	return quads
 }
 
@@ -62,6 +63,15 @@ func createQuad(typ, lang, word, fromLang, fromWord string) quad.Quad {
 		fmt.Printf("%s/%s %s %s/%s\n", lang, word, typ, fromLang, fromWord)
 	}
 	return q
+}
+
+// Most Latin roots don't explicitly list every descendant, so create descendants explicitly.
+func reverseQuads(qs []quad.Quad) []quad.Quad {
+	var reversed []quad.Quad
+	for _, q := range qs {
+		reversed = append(reversed, quad.Make(q.Object, "descendant", q.Subject, nil))
+	}
+	return reversed
 }
 
 func uniqueQuads(qs []quad.Quad) []quad.Quad {
