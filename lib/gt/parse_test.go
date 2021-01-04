@@ -1,9 +1,10 @@
 package gt
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/vthommeret/glossterm/lib/lang"
 	"github.com/vthommeret/glossterm/lib/tpl"
 )
@@ -29,10 +30,10 @@ func TestParse(t *testing.T) {
 			"==English==\n\n===Etymology===\n{{m|la|dictio||speaking}}",
 			Word{
 				Name: "dictionary",
-				Languages: []Language{
-					{
+				Languages: map[string]*Language{
+					"en": {
 						Code: "en",
-						Etymology: Etymology{
+						Etymology: &Etymology{
 							Mentions: []tpl.Mention{
 								{Lang: "la", Word: "dictio", Gloss: "speaking"},
 							},
@@ -47,10 +48,10 @@ func TestParse(t *testing.T) {
 			"==English==\n\n===Etymology===\n{{m|la|dictio|t=speaking}}",
 			Word{
 				Name: "dictionary",
-				Languages: []Language{
-					{
+				Languages: map[string]*Language{
+					"en": {
 						Code: "en",
-						Etymology: Etymology{
+						Etymology: &Etymology{
 							Mentions: []tpl.Mention{
 								{Lang: "la", Word: "dictio", Gloss: "speaking"},
 							},
@@ -65,10 +66,10 @@ func TestParse(t *testing.T) {
 			"==English==\n\n===Etymology===\n{{m|la|dictio}}\n{{m|la|dictus{{m|la|dictus}}}}",
 			Word{
 				Name: "dictionary",
-				Languages: []Language{
-					{
+				Languages: map[string]*Language{
+					"en": {
 						Code: "en",
-						Etymology: Etymology{
+						Etymology: &Etymology{
 							Mentions: []tpl.Mention{
 								{Lang: "la", Word: "dictio"},
 							},
@@ -83,10 +84,10 @@ func TestParse(t *testing.T) {
 			"==Latin==\n\n====Descendants====\n* English: {{l|en|papyrus}}, [[paper]]\n* French: {{l|fr|papyrus}}, {{l|fr|papier}}, [[Category:paper]]",
 			Word{
 				Name: "papyrus",
-				Languages: []Language{
-					{
+				Languages: map[string]*Language{
+					"la": {
 						Code: "la",
-						Descendants: []tpl.Link{
+						Links: []tpl.Link{
 							{Lang: "en", Word: "papyrus"},
 							{Lang: "en", Word: "paper"},
 							{Lang: "fr", Word: "papyrus"},
@@ -97,12 +98,19 @@ func TestParse(t *testing.T) {
 			},
 		},
 	}
+
+	ignoreUnexported := cmpopts.IgnoreUnexported(Language{})
+
 	for _, tt := range tests {
-		got, err := ParseWord(tt.word, tt.text, lang.DefaultLangMap)
+		got, err := ParseWord(Page{Title: tt.word, Text: tt.text}, lang.DefaultLangMap)
 		if err != nil {
 			t.Errorf("%s: gt.ParseWord(%q, %q) got error: %s.", tt.desc, tt.word, tt.text, err)
-		} else if !reflect.DeepEqual(got, tt.want) {
-			t.Errorf("%s: gt.ParseWord(%q, %q) = %+v, want %+v.", tt.desc, tt.word, tt.text, got, tt.want)
+			continue
+		}
+		if !cmp.Equal(tt.want, got, ignoreUnexported) {
+			if diff := cmp.Diff(tt.want, got, ignoreUnexported); diff != "" {
+				t.Errorf("%s: gt.ParseWord(%q, %q) diff: %s", tt.desc, tt.word, tt.text, diff)
+			}
 		}
 	}
 }
