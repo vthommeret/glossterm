@@ -151,7 +151,9 @@ type lexer struct {
 	width      Pos       // width of last rune read from input
 	items      chan item // channel of scanned items
 	buffered   buffer    // buffer of items before they're emitted
+	tplDepth   int       // template depth
 	inListItem bool
+	debug      bool // output debug messages automatically
 }
 
 // next returns the next rune in the input.
@@ -163,6 +165,11 @@ func (l *lexer) next() rune {
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.width = Pos(w)
 	l.pos += l.width
+
+	if l.debug {
+		l.printDebug("next", "")
+	}
+
 	return r
 }
 
@@ -176,10 +183,28 @@ func (l *lexer) peek() rune {
 // backup steps back one rune. Can only be called once per call of next.
 func (l *lexer) backup() {
 	l.pos -= l.width
+	if l.debug {
+		l.printDebug("backup", "")
+	}
+}
+
+// advanced steps forward one rune. Can only be called once per call of next.
+func (l *lexer) advance() {
+	l.pos += l.width
+	if l.debug {
+		l.printDebug("advance", "")
+	}
 }
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
+	if l.debug {
+		var val string
+		if l.pos > l.start {
+			val = fmt.Sprintf(" → %s", l.input[l.start:l.pos])
+		}
+		l.printDebug("emit", fmt.Sprintf("%s%s", t.String(), val))
+	}
 	if l.buffered.buffering {
 		l.buffer(t)
 	} else {
@@ -205,6 +230,9 @@ func (l *lexer) buffer(t itemType) {
 
 // emitDepth passes a item with depth back to the client.
 func (l *lexer) emitDepth(t itemType, depth int) {
+	if l.debug {
+		l.printDebug("emit", fmt.Sprintf("%s → %s", t.String(), l.input[l.start:l.pos]))
+	}
 	l.items <- item{t, l.start, l.input[l.start:l.pos], depth, false}
 	l.start = l.pos
 }
@@ -212,6 +240,9 @@ func (l *lexer) emitDepth(t itemType, depth int) {
 // ignore skips over the pending input before this point.
 func (l *lexer) ignore() {
 	l.start = l.pos
+	if l.debug {
+		l.printDebug("ignore", "")
+	}
 }
 
 // accept consumes the next rune if it's from the valid set.
@@ -299,22 +330,57 @@ func NewLexer(input string) *lexer {
 	return l
 }
 
+func (l *lexer) printDebug(fn, val string) {
+	var leftCursor, inner, rightCursor string
+	width := l.pos - l.start
+	prefix := strings.Repeat(" ", int(l.start))
+	if width == 0 {
+		leftCursor = "↑"
+	} else {
+		leftCursor = "↑"
+		rightCursor = "↑"
+		inner = strings.Repeat(" ", int(width-1))
+	}
+	action := fmt.Sprintf("# %s", fn)
+	if val != "" {
+		action = fmt.Sprintf("%s %s", action, val)
+	}
+	fmt.Printf("%s  %s\n%s%s%s%s\n\n", l.input, action, prefix, leftCursor, inner, rightCursor)
+}
+
 // Print prints all items
 func (l *lexer) Print() {
-	for {
-		i := l.NextItem()
+	fmt.Print(l.String(l.Items()))
+}
+
+func (l *lexer) String(items []item) string {
+	var b strings.Builder
+	for _, i := range items {
 		if i.typ == itemEOF || i.typ == itemError {
 			if i.typ == itemError {
-				fmt.Printf("Error: %s\n", i.val)
+				fmt.Fprintf(&b, "Error: %s\n", i.val)
 			}
 			break
 		}
 		if i.typ == itemHeaderStart || i.typ == itemHeaderEnd || i.typ == itemUnorderedListItemStart || i.typ == itemOrderedListItemStart || i.typ == itemOrderedDefinitionStart || i.typ == itemUnorderedDefinitionStart {
-			fmt.Printf("%s, %d: %q\n", i.typ, i.depth, i.val)
+			fmt.Fprintf(&b, "%s, %d: %q\n", i.typ, i.depth, i.val)
 		} else {
-			fmt.Printf("%s: %q\n", i.typ, i.val)
+			fmt.Fprintf(&b, "%s: %q\n", i.typ, i.val)
 		}
 	}
+	return b.String()
+}
+
+func (l *lexer) Items() []item {
+	var items []item
+	for {
+		i := l.NextItem()
+		if i.typ == itemEOF {
+			break
+		}
+		items = append(items, i)
+	}
+	return items
 }
 
 // run runs the state machine for the lexer.
