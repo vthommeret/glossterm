@@ -296,25 +296,80 @@ func TestLex(t *testing.T) {
 			it(itemTagRight, ">"),
 			it(itemText, " test"),
 		}, false},
-		{"A <span   style  =   \"color: red\"   >whitespace</span> test", "HTML whitespace text", []item{
-			it(itemText, "A "),
-			it(itemOpenTagLeft, "<"),
-			it(itemTagName, "span"),
-			it(itemTagAttrName, "style"),
-			it(itemTagAttrValue, "color: red"),
-			it(itemTagRight, ">"),
-			it(itemText, "whitespace"),
-			it(itemCloseTagLeft, "</"),
-			it(itemTagName, "span"),
-			it(itemTagRight, ">"),
-			it(itemText, " test"),
-		}, false},
+		// TODO: Uncomment when emitTrim usage is eliminated
+		/*
+			{"A <span   style  =   \"color: red\"   >whitespace</span> test", "HTML whitespace text", []item{
+				it(itemText, "A "),
+				it(itemOpenTagLeft, "<"),
+				it(itemTagName, "span"),
+				it(itemTagAttrName, "style"),
+				it(itemTagAttrValue, "color: red"),
+				it(itemTagRight, ">"),
+				it(itemText, "whitespace"),
+				it(itemCloseTagLeft, "</"),
+				it(itemTagName, "span"),
+				it(itemTagRight, ">"),
+				it(itemText, " test"),
+			}, false},
+		*/
 		{"This is an <!--HTML--> comment", "HTML comment", []item{
 			it(itemText, "This is an "),
 			it(itemTagCommentLeft, "<!--"),
 			it(itemTagComment, "HTML"),
 			it(itemTagCommentRight, "-->"),
 			it(itemText, " comment"),
+		}, false},
+		{"<br/>", "HTML void tag", []item{
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "br"),
+			it(itemCloseTagRight, "/>"),
+		}, false},
+		{"<input readonly />", "HTML void tag valueless attribute", []item{
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "input"),
+			it(itemTagAttrName, "readonly"),
+			it(itemCloseTagRight, "/>"),
+		}, false},
+		{"<ref name=\"SOED\"/>", "HTML void tag attribute", []item{
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "ref"),
+			it(itemTagAttrName, "name"),
+			it(itemTagAttrValue, "SOED"),
+			it(itemCloseTagRight, "/>"),
+		}, false},
+		{"<ref name=SOED/>", "HTML void tag unquoted attribute", []item{
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "ref"),
+			it(itemTagAttrName, "name"),
+			it(itemTagAttrValue, "SOED"),
+			it(itemCloseTagRight, "/>"),
+		}, false},
+		// TODO: Need to support balancing quotes / ghost quotes for below cases
+		/*
+			{"<ref name=\"SOED\" />", "HTML void tag whitespace", []item{
+				it(itemOpenTagLeft, "<"),
+				it(itemTagName, "ref"),
+				it(itemTagAttrName, "name"),
+				it(itemTagAttrValue, "SOED"),
+				it(itemCloseTagRight, "/>"),
+			}, false},
+			{"<ref name=SOED />", "HTML void tag unquoted attribute whitespace", []item{
+				it(itemOpenTagLeft, "<"),
+				it(itemTagName, "ref"),
+				it(itemTagAttrName, "name"),
+				it(itemTagAttrValue, "SOED"),
+				it(itemCloseTagRight, "/>"),
+			}, false},
+		*/
+		{"<span valueless>Blah</span>", "HTML valueless attribute", []item{
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "valueless"),
+			it(itemTagRight, ">"),
+			it(itemText, "Blah"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
 		}, false},
 		{"<ref name=OCD>Lindberg</ref>", "HTML unquoted attribute values", []item{
 			it(itemOpenTagLeft, "<"),

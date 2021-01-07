@@ -309,6 +309,13 @@ func lexCloseTagLeft(l *lexer) stateFn {
 	return lexCloseTagName
 }
 
+// lexCloseTagRight scans close HTML tag right delimiters (/>)
+func lexCloseTagRight(l *lexer) stateFn {
+	l.pos += Pos(len(closeTagRight))
+	l.emit(itemCloseTagRight)
+	return lexText2
+}
+
 // lexTagRight scans HTML tag right delimiters (>)
 func lexTagRight(l *lexer) stateFn {
 	l.pos += Pos(len(tagRight))
@@ -326,6 +333,14 @@ func lexOpenTagName(l *lexer) stateFn {
 				l.emit(itemTagName)
 			}
 			return lexTagAttrName
+		case r == '/':
+			if strings.HasPrefix(l.remaining(), ">") {
+				l.backup()
+				if l.pos > l.start {
+					l.emit(itemTagName)
+				}
+				return lexCloseTagRight
+			}
 		case r == '>':
 			l.backup()
 			if l.pos > l.start {
@@ -362,8 +377,19 @@ func lexTagAttrName(l *lexer) stateFn {
 			l.advance()
 			l.ignore()
 			return lexTagAttrValueLeft
+		case r == '/':
+			if strings.HasPrefix(l.remaining(), ">") {
+				l.backup()
+				if l.pos > l.start {
+					l.emitTrim(itemTagAttrName)
+				}
+				return lexCloseTagRight
+			}
 		case r == '>':
 			l.backup()
+			if l.pos > l.start {
+				l.emitTrim(itemTagAttrName)
+			}
 			return lexTagRight
 		}
 	}
@@ -396,6 +422,14 @@ func lexTagAttrValue(l *lexer) stateFn {
 			l.advance()
 			l.ignore()
 			return lexTagAttrName
+		case r == '/':
+			if strings.HasPrefix(l.remaining(), ">") {
+				l.backup()
+				if l.pos > l.start {
+					l.emit(itemTagAttrValue)
+				}
+				return lexCloseTagRight
+			}
 		case r == '>':
 			l.backup()
 			if l.pos > l.start {

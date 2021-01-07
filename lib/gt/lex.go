@@ -76,6 +76,7 @@ const (
 
 	itemOpenTagLeft     // Opening HTML tag left delimiter
 	itemCloseTagLeft    // Closing HTML tag left delimiter
+	itemCloseTagRight   // Closing HTML tag right delimiter
 	itemTagName         // HTML tag name
 	itemTagRight        // HTML tag right delimiter
 	itemTagAttrName     // HTML tag attribute name
@@ -121,6 +122,7 @@ var itemName = map[itemType]string{
 
 	itemOpenTagLeft:     "open tag left",
 	itemCloseTagLeft:    "close tag left",
+	itemCloseTagRight:   "close tag right",
 	itemTagName:         "tag name",
 	itemTagRight:        "tag right",
 	itemTagAttrName:     "tag attribute name",
@@ -508,6 +510,7 @@ const (
 
 	openTagLeft        = "<"
 	closeTagLeft       = "</"
+	closeTagRight      = "/>"
 	tagRight           = ">"
 	tagAttrEqual       = "="
 	tagAttrSingleQuote = "'"
