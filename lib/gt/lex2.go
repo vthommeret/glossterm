@@ -21,7 +21,6 @@ func NewLexer2(input string, debug bool) *lexer {
 }
 
 // run runs the state machine for the lexer.
-// TODO: Ignore whitespace
 func (l *lexer) run2() {
 	if l.debug {
 		l.printDebug("start", "")
@@ -101,6 +100,10 @@ Loop:
 		}
 
 		// Lex HTML
+		if strings.HasPrefix(remaining, tagCommentLeft) {
+			l.emitAnyText()
+			return lexTagCommentLeft
+		}
 		if strings.HasPrefix(remaining, closeTagLeft) {
 			l.emitAnyText()
 			return lexCloseTagLeft
@@ -253,6 +256,36 @@ func lexStrong2(l *lexer) stateFn {
 func lexEmphasized2(l *lexer) stateFn {
 	l.pos += Pos(len(emphasized))
 	l.emit(itemEmphasized)
+	return lexText2
+}
+
+// lexTagCommentLeft scans HTML comment left delimiters (<!--)
+func lexTagCommentLeft(l *lexer) stateFn {
+	l.pos += Pos(len(tagCommentLeft))
+	l.emit(itemTagCommentLeft)
+	return lexTagComment
+}
+
+// lexTagComment scans HTML comments
+func lexTagComment(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == '-':
+			if strings.HasPrefix(l.remaining(), "->") {
+				l.backup()
+				if l.pos > l.start {
+					l.emit(itemTagComment)
+				}
+				return lexTagCommentRight
+			}
+		}
+	}
+}
+
+// lexTagCommentRight scans HTML comment right delimiters (-->)
+func lexTagCommentRight(l *lexer) stateFn {
+	l.pos += Pos(len(tagCommentRight))
+	l.emit(itemTagCommentRight)
 	return lexText2
 }
 

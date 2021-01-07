@@ -309,6 +309,13 @@ func TestLex(t *testing.T) {
 			it(itemTagRight, ">"),
 			it(itemText, " test"),
 		}, false},
+		{"This is an <!--HTML--> comment", "HTML comment", []item{
+			it(itemText, "This is an "),
+			it(itemTagCommentLeft, "<!--"),
+			it(itemTagComment, "HTML"),
+			it(itemTagCommentRight, "-->"),
+			it(itemText, " comment"),
+		}, false},
 
 		// Nesting tests
 		{"{{gloss|hello <strong>world</strong>}}", "HTML tag in template", []item{
@@ -423,6 +430,30 @@ func TestLex(t *testing.T) {
 			it(itemParamDelim, "|"),
 			it(itemText, "dictus"),
 			it(itemRightTemplate, "}}"),
+			it(itemRightTemplate, "}}"),
+		}, false},
+		{"This is an <!--{{gloss|HTML}}--> comment", "Template in HTML comment", []item{
+			it(itemText, "This is an "),
+			it(itemTagCommentLeft, "<!--"),
+			it(itemTagComment, "{{gloss|HTML}}"),
+			it(itemTagCommentRight, "-->"),
+			it(itemText, " comment"),
+		}, false},
+		{"This is an <!--[[HTML]]--> comment", "Link in HTML comment", []item{
+			it(itemText, "This is an "),
+			it(itemTagCommentLeft, "<!--"),
+			it(itemTagComment, "[[HTML]]"),
+			it(itemTagCommentRight, "-->"),
+			it(itemText, " comment"),
+		}, false},
+		{"{{gloss|This is a <!-- comment -->}}", "Comment in template", []item{
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemText, "This is a "),
+			it(itemTagCommentLeft, "<!--"),
+			it(itemTagComment, " comment "),
+			it(itemTagCommentRight, "-->"),
 			it(itemRightTemplate, "}}"),
 		}, false},
 	}

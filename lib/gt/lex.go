@@ -74,12 +74,15 @@ const (
 	itemStrong           // Strong markup
 	itemEmphasized       // Emphasized markup
 
-	itemOpenTagLeft  // Opening HTML tag left delimiter
-	itemCloseTagLeft // Closing HTML tag left delimiter
-	itemTagName      // HTML tag name
-	itemTagRight     // HTML tag right delimiter
-	itemTagAttrName  // HTML tag attribute name
-	itemTagAttrValue // HTML tag attribute value
+	itemOpenTagLeft     // Opening HTML tag left delimiter
+	itemCloseTagLeft    // Closing HTML tag left delimiter
+	itemTagName         // HTML tag name
+	itemTagRight        // HTML tag right delimiter
+	itemTagAttrName     // HTML tag attribute name
+	itemTagAttrValue    // HTML tag attribute value
+	itemTagCommentLeft  // HTML comment left delimiter
+	itemTagComment      // HTML comment
+	itemTagCommentRight // HTML comment left delimiter
 )
 
 // Make the types prettyprint.
@@ -116,12 +119,15 @@ var itemName = map[itemType]string{
 	itemStrong:           "strong",
 	itemEmphasized:       "emphasized",
 
-	itemOpenTagLeft:  "open tag left",
-	itemCloseTagLeft: "close tag left",
-	itemTagName:      "tag name",
-	itemTagRight:     "tag right",
-	itemTagAttrName:  "tag attribute name",
-	itemTagAttrValue: "tag attribute value",
+	itemOpenTagLeft:     "open tag left",
+	itemCloseTagLeft:    "close tag left",
+	itemTagName:         "tag name",
+	itemTagRight:        "tag right",
+	itemTagAttrName:     "tag attribute name",
+	itemTagAttrValue:    "tag attribute value",
+	itemTagCommentLeft:  "tag comment left",
+	itemTagComment:      "tag comment",
+	itemTagCommentRight: "tag comment right",
 }
 
 // From http://w3c.github.io/html/syntax.html#void-elements
@@ -506,6 +512,8 @@ const (
 	tagAttrEqual       = "="
 	tagAttrSingleQuote = "'"
 	tagAttrDoubleQuote = "\""
+	tagCommentLeft     = "<!--"
+	tagCommentRight    = "-->"
 )
 
 // lexText scans until a header or template delimiter.
