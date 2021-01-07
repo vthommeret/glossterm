@@ -78,6 +78,8 @@ const (
 	itemCloseTagLeft // Closing HTML tag left delimiter
 	itemTagName      // HTML tag name
 	itemTagRight     // HTML tag right delimiter
+	itemTagAttrName  // HTML tag attribute name
+	itemTagAttrValue // HTML tag attribute value
 )
 
 // Make the types prettyprint.
@@ -118,6 +120,8 @@ var itemName = map[itemType]string{
 	itemCloseTagLeft: "close tag left",
 	itemTagName:      "tag name",
 	itemTagRight:     "tag right",
+	itemTagAttrName:  "tag attribute name",
+	itemTagAttrValue: "tag attribute value",
 }
 
 // From http://w3c.github.io/html/syntax.html#void-elements
@@ -216,17 +220,31 @@ func (l *lexer) advance() {
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
+	l.emitItem(t, false)
+}
+
+// emitTrim passes a trimmed item back to the client.
+func (l *lexer) emitTrim(t itemType) {
+	l.emitItem(t, true)
+}
+
+// emitItem passes an item back to the client.
+func (l *lexer) emitItem(t itemType, trim bool) {
+	input := l.input[l.start:l.pos]
+	if trim {
+		input = strings.TrimSpace(input)
+	}
 	if l.debug {
 		var val string
 		if l.pos > l.start {
-			val = fmt.Sprintf(" → %s", l.input[l.start:l.pos])
+			val = fmt.Sprintf(" → %q", input)
 		}
 		l.printDebug("emit", fmt.Sprintf("%s%s", t.String(), val))
 	}
 	if l.buffered.buffering {
 		l.buffer(t)
 	} else {
-		l.items <- item{t, l.start, l.input[l.start:l.pos], 0, false}
+		l.items <- item{t, l.start, input, 0, false}
 		l.start = l.pos
 	}
 }
@@ -482,9 +500,12 @@ const (
 	strong           = "'''"
 	emphasized       = "''"
 
-	openTagLeft  = "<"
-	closeTagLeft = "</"
-	tagRight     = ">"
+	openTagLeft        = "<"
+	closeTagLeft       = "</"
+	tagRight           = ">"
+	tagAttrEqual       = "="
+	tagAttrSingleQuote = "'"
+	tagAttrDoubleQuote = "\""
 )
 
 // lexText scans until a header or template delimiter.

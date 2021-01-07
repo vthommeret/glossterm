@@ -260,25 +260,45 @@ func lexEmphasized2(l *lexer) stateFn {
 func lexOpenTagLeft(l *lexer) stateFn {
 	l.pos += Pos(len(openTagLeft))
 	l.emit(itemOpenTagLeft)
-	return lexTagName
+	return lexOpenTagName
 }
 
 // lexCloseTagLeft scans close HTML tag left delimiters
 func lexCloseTagLeft(l *lexer) stateFn {
 	l.pos += Pos(len(closeTagLeft))
 	l.emit(itemCloseTagLeft)
-	return lexTagName
+	return lexCloseTagName
 }
 
 // lexTagRight scans HTML tag right delimiters
 func lexTagRight(l *lexer) stateFn {
 	l.pos += Pos(len(tagRight))
-	l.emit(itemTagRight)
+	l.emitTrim(itemTagRight)
 	return lexText2
 }
 
-// lexTagName scans HTML tag names
-func lexTagName(l *lexer) stateFn {
+// lexOpenTagName scans HTML tag names
+func lexOpenTagName(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == ' ':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemTagName)
+			}
+			return lexTagAttrName
+		case r == '>':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemTagName)
+			}
+			return lexTagRight
+		}
+	}
+}
+
+// lexCloseTagName scans HTML tag names
+func lexCloseTagName(l *lexer) stateFn {
 	for {
 		switch r := l.next(); {
 		case r == '>':
@@ -287,6 +307,52 @@ func lexTagName(l *lexer) stateFn {
 				l.emit(itemTagName)
 			}
 			return lexTagRight
+		}
+	}
+}
+
+// lexTagAttrName scans HTML tag attribute names
+func lexTagAttrName(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == '=':
+			l.backup()
+			if l.pos > l.start {
+				l.emitTrim(itemTagAttrName)
+			}
+			l.advance()
+			l.ignore()
+			return lexTagAttrValueLeft
+		case r == '>':
+			l.backup()
+			return lexTagRight
+		}
+	}
+}
+
+// lexTagAttrValueLeft scans HTML tag attribute left delimiter
+func lexTagAttrValueLeft(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == '\'', r == '"':
+			l.ignore()
+			return lexTagAttrValue
+		}
+	}
+}
+
+// lexTagAttrValue scans HTML tag attribute value
+func lexTagAttrValue(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == '\'', r == '"':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemTagAttrValue)
+			}
+			l.advance()
+			l.ignore()
+			return lexTagAttrName
 		}
 	}
 }
