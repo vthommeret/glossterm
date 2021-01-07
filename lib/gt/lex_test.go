@@ -113,7 +113,7 @@ func TestLex(t *testing.T) {
 				it(itemText, "[[unclosed|named] link"),
 			}, false},
 		*/
-		{"A [[simple|'''strong''']] link", "A strong link", []item{
+		{"A [[simple|'''strong''']] link", "Markup in link", []item{
 			it(itemText, "A "),
 			it(itemLeftLink, "[["),
 			it(itemLink, "simple"),
@@ -121,6 +121,21 @@ func TestLex(t *testing.T) {
 			it(itemStrong, "'''"),
 			it(itemText, "strong"),
 			it(itemStrong, "'''"),
+			it(itemRightLink, "]]"),
+			it(itemText, " link"),
+		}, false},
+		{"An [[amazing|<em>emphasized</em>]] link", "HTML in link", []item{
+			it(itemText, "An "),
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "em"),
+			it(itemTagRight, ">"),
+			it(itemText, "emphasized"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "em"),
+			it(itemTagRight, ">"),
 			it(itemRightLink, "]]"),
 			it(itemText, " link"),
 		}, false},
