@@ -316,6 +316,44 @@ func TestLex(t *testing.T) {
 			it(itemTagCommentRight, "-->"),
 			it(itemText, " comment"),
 		}, false},
+		{"<ref name=OCD>Lindberg</ref>", "HTML unquoted attribute values", []item{
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "ref"),
+			it(itemTagAttrName, "name"),
+			it(itemTagAttrValue, "OCD"),
+			it(itemTagRight, ">"),
+			it(itemText, "Lindberg"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "ref"),
+			it(itemTagRight, ">"),
+		}, false},
+		// TODO: Need to support balancing quotes / ghost quotes for below cases
+		/*
+			{"<ref name=   OCD  >Lindberg</ref>", "HTML unquoted attribute values whitespace", []item{
+				it(itemOpenTagLeft, "<"),
+				it(itemTagName, "ref"),
+				it(itemTagAttrName, "name"),
+				it(itemTagAttrValue, "OCD"),
+				it(itemTagRight, ">"),
+				it(itemText, "Lindberg"),
+				it(itemCloseTagLeft, "</"),
+				it(itemTagName, "ref"),
+				it(itemTagRight, ">"),
+			}, true},
+			{"<ref name=   OCD  class=\"foo\">Lindberg</ref>", "HTML unquoted multiple attribute values whitespace", []item{
+				it(itemOpenTagLeft, "<"),
+				it(itemTagName, "ref"),
+				it(itemTagAttrName, "name"),
+				it(itemTagAttrValue, "OCD"),
+				it(itemTagAttrName, "class"),
+				it(itemTagAttrValue, "foo"),
+				it(itemTagRight, ">"),
+				it(itemText, "Lindberg"),
+				it(itemCloseTagLeft, "</"),
+				it(itemTagName, "ref"),
+				it(itemTagRight, ">"),
+			}, true},
+		*/
 
 		// Nesting tests
 		{"{{gloss|hello <strong>world</strong>}}", "HTML tag in template", []item{

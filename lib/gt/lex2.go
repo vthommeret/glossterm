@@ -376,6 +376,10 @@ func lexTagAttrValueLeft(l *lexer) stateFn {
 		case r == '\'', r == '"':
 			l.ignore()
 			return lexTagAttrValue
+		case isWhitespace(r):
+			l.ignore()
+		default:
+			return lexTagAttrValue
 		}
 	}
 }
@@ -392,6 +396,12 @@ func lexTagAttrValue(l *lexer) stateFn {
 			l.advance()
 			l.ignore()
 			return lexTagAttrName
+		case r == '>':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemTagAttrValue)
+			}
+			return lexTagRight
 		}
 	}
 }
