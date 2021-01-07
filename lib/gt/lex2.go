@@ -21,6 +21,12 @@ func NewLexer2(input string, debug bool) *lexer {
 }
 
 // run runs the state machine for the lexer.
+//
+// General flow is characters within template parameter values, HTML tags and markup are
+// all considered text and are processed by "lexText". This allows arbitrary of nesting
+// of templates, HTML tags, markup within text. HTML attributes, HTML comments, template
+// action names have their own parsers and don't support nesting (e.g. evaluating a
+// template within an HTML attribute value)
 func (l *lexer) run2() {
 	if l.debug {
 		l.printDebug("start", "")
