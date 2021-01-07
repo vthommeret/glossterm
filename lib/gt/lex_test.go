@@ -93,6 +93,11 @@ func TestLex(t *testing.T) {
 			it(itemRightLink, "]]"),
 			it(itemText, " link"),
 		}, false},
+		/*
+			{"An [[unclosed link", "An unclosed link", []item{
+				it(itemText, "An [[unclosed link"),
+			}, true},
+		*/
 		{"A [[simple|named]] link", "A simple, named link", []item{
 			it(itemText, "A "),
 			it(itemLeftLink, "[["),
@@ -117,6 +122,17 @@ func TestLex(t *testing.T) {
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "template"),
 			it(itemRightTemplate, "}}"),
+			it(itemRightLink, "]]"),
+			it(itemText, " link"),
+		}, false},
+		{"A [[simple|'''strong''']] link", "A strong link", []item{
+			it(itemText, "A "),
+			it(itemLeftLink, "[["),
+			it(itemLink, "simple"),
+			it(itemLinkDelim, "|"),
+			it(itemStrong, "'''"),
+			it(itemText, "strong"),
+			it(itemStrong, "'''"),
 			it(itemRightLink, "]]"),
 			it(itemText, " link"),
 		}, false},
@@ -254,6 +270,29 @@ func TestLex(t *testing.T) {
 				it(itemText, "Text with * asterisk ignored."),
 			}, false},
 		*/
+
+		// Markup tests
+		{"A '''''strong emphasized''''' statement", "Strong emphasized text", []item{
+			it(itemText, "A "),
+			it(itemStrongEmphasized, "'''''"),
+			it(itemText, "strong emphasized"),
+			it(itemStrongEmphasized, "'''''"),
+			it(itemText, " statement"),
+		}, false},
+		{"A '''strong''' statement", "Strong text", []item{
+			it(itemText, "A "),
+			it(itemStrong, "'''"),
+			it(itemText, "strong"),
+			it(itemStrong, "'''"),
+			it(itemText, " statement"),
+		}, false},
+		{"An ''emphasized'' statement", "Emphasized text", []item{
+			it(itemText, "An "),
+			it(itemEmphasized, "''"),
+			it(itemText, "emphasized"),
+			it(itemEmphasized, "''"),
+			it(itemText, " statement"),
+		}, false},
 	}
 
 	for _, tt := range tests {

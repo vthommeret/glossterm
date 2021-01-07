@@ -56,13 +56,13 @@ Loop:
 			// End delim
 			if remaining == delim || strings.HasPrefix(remaining, endDelim) {
 				l.emitAnyText()
-				return lexDelim2(itemHeaderEnd, delim, i)
+				return lexHeaderDelim2(itemHeaderEnd, delim, i)
 			}
 
 			// Start delim
 			if startOfLine && strings.HasPrefix(remaining, delim) {
 				l.emitAnyText()
-				return lexDelim2(itemHeaderStart, delim, i)
+				return lexHeaderDelim2(itemHeaderStart, delim, i)
 			}
 		}
 
@@ -71,7 +71,6 @@ Loop:
 			l.emitAnyText()
 			return lexLeftTemplate2
 		}
-		// TODO: Share with template parsing code
 		if strings.HasPrefix(remaining, rightTemplate) {
 			l.emitAnyText()
 			return lexRightTemplate2
@@ -82,27 +81,40 @@ Loop:
 			l.emitAnyText()
 			return lexLeftLink2
 		}
-		// TODO: Share with link parsing code
 		if strings.HasPrefix(remaining, rightLink) {
 			l.emitAnyText()
 			return lexRightLink2
 		}
 
+		// Lex markup
+		if strings.HasPrefix(remaining, strongEmphasized) {
+			l.emitAnyText()
+			return lexStrongEmphasized2
+		}
+		if strings.HasPrefix(remaining, strong) {
+			l.emitAnyText()
+			return lexStrong2
+		}
+		if strings.HasPrefix(remaining, emphasized) {
+			l.emitAnyText()
+			return lexEmphasized2
+		}
+
+		// Lex remaining characters
 		switch r := l.next(); {
 		case r == eof:
 			break Loop
 
-			// TODO: Share cases with template parsing code
+			// Template parameter delimiter
 		case r == '|':
-			// TODO: Update to check that active context is a template
 			if l.tplDepth > 0 {
 				l.backup()
 				l.emitAnyText()
 				l.advance()
 				l.emit(itemParamDelim)
 			}
+			// Template parameter name delimiter
 		case r == '=':
-			// TODO: Update to check that active context is a template
 			if l.tplDepth > 0 {
 				l.backup()
 				l.emit(itemParamName)
@@ -122,8 +134,8 @@ Loop:
 	return nil
 }
 
-// Rename lexHeader?
-func lexDelim2(it itemType, delim string, depth int) stateFn {
+// lexHeaderDelim2 scans header delimiters
+func lexHeaderDelim2(it itemType, delim string, depth int) stateFn {
 	return func(l *lexer) stateFn {
 		l.pos += Pos(len(delim))
 		l.emitDepth(it, depth)
@@ -207,4 +219,25 @@ func lexLink2(l *lexer) stateFn {
 			}
 		}
 	}
+}
+
+// lexStrongEmphasized2 scans the strong emphasized text
+func lexStrongEmphasized2(l *lexer) stateFn {
+	l.pos += Pos(len(strongEmphasized))
+	l.emit(itemStrongEmphasized)
+	return lexText2
+}
+
+// lexStrong2 scans the strong text
+func lexStrong2(l *lexer) stateFn {
+	l.pos += Pos(len(strong))
+	l.emit(itemStrong)
+	return lexText2
+}
+
+// lexEmphasized2 scans the strong text
+func lexEmphasized2(l *lexer) stateFn {
+	l.pos += Pos(len(emphasized))
+	l.emit(itemEmphasized)
+	return lexText2
 }

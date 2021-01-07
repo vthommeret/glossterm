@@ -69,6 +69,10 @@ const (
 	itemLink           // Link text
 	itemLinkDelim      // Link delimiter
 	itemLinkName       // Link name
+
+	itemStrongEmphasized // Strong emphasized markup
+	itemStrong           // Strong markup
+	itemEmphasized       // Emphasized markup
 )
 
 // Make the types prettyprint.
@@ -100,6 +104,10 @@ var itemName = map[itemType]string{
 	itemLink:           "link",
 	itemLinkDelim:      "link delim",
 	itemLinkName:       "link name",
+
+	itemStrongEmphasized: "strong emphasized",
+	itemStrong:           "strong",
+	itemEmphasized:       "emphasized",
 }
 
 // From http://w3c.github.io/html/syntax.html#void-elements
@@ -459,6 +467,10 @@ const (
 	rightLink              = "]]"
 	linkDelim              = "|"
 	spaceChars             = " \t\r\n"
+
+	strongEmphasized = "'''''"
+	strong           = "'''"
+	emphasized       = "''"
 )
 
 // lexText scans until a header or template delimiter.
