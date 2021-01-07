@@ -185,7 +185,9 @@ func TestLex(t *testing.T) {
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "t"),
 			it(itemParamDelim, "|"),
-			it(itemText, "<डलर>"),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "डलर"),
+			it(itemTagRight, ">"),
 			it(itemRightTemplate, "}}"),
 		}, false},
 		{"{{m|la|dictus{{m|la|dictus}}}}", "Nested templates", []item{
@@ -292,6 +294,19 @@ func TestLex(t *testing.T) {
 			it(itemText, "emphasized"),
 			it(itemEmphasized, "''"),
 			it(itemText, " statement"),
+		}, false},
+
+		// HTML tests
+		{"An <em>emphasized</em> test", "HTML emphasized text", []item{
+			it(itemText, "An "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "em"),
+			it(itemTagRight, ">"),
+			it(itemText, "emphasized"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "em"),
+			it(itemTagRight, ">"),
+			it(itemText, " test"),
 		}, false},
 	}
 

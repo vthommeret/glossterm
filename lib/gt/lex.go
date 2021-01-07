@@ -73,6 +73,11 @@ const (
 	itemStrongEmphasized // Strong emphasized markup
 	itemStrong           // Strong markup
 	itemEmphasized       // Emphasized markup
+
+	itemOpenTagLeft  // Opening HTML tag left delimiter
+	itemCloseTagLeft // Closing HTML tag left delimiter
+	itemTagName      // HTML tag name
+	itemTagRight     // HTML tag right delimiter
 )
 
 // Make the types prettyprint.
@@ -108,6 +113,11 @@ var itemName = map[itemType]string{
 	itemStrongEmphasized: "strong emphasized",
 	itemStrong:           "strong",
 	itemEmphasized:       "emphasized",
+
+	itemOpenTagLeft:  "open tag left",
+	itemCloseTagLeft: "close tag left",
+	itemTagName:      "tag name",
+	itemTagRight:     "tag right",
 }
 
 // From http://w3c.github.io/html/syntax.html#void-elements
@@ -471,6 +481,10 @@ const (
 	strongEmphasized = "'''''"
 	strong           = "'''"
 	emphasized       = "''"
+
+	openTagLeft  = "<"
+	closeTagLeft = "</"
+	tagRight     = ">"
 )
 
 // lexText scans until a header or template delimiter.

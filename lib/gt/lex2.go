@@ -100,6 +100,20 @@ Loop:
 			return lexEmphasized2
 		}
 
+		// Lex HTML
+		if strings.HasPrefix(remaining, closeTagLeft) {
+			l.emitAnyText()
+			return lexCloseTagLeft
+		}
+		if strings.HasPrefix(remaining, openTagLeft) {
+			l.emitAnyText()
+			return lexOpenTagLeft
+		}
+		if strings.HasPrefix(remaining, tagRight) {
+			l.emitAnyText()
+			return lexTagRight
+		}
+
 		// Lex remaining characters
 		switch r := l.next(); {
 		case r == eof:
@@ -240,4 +254,39 @@ func lexEmphasized2(l *lexer) stateFn {
 	l.pos += Pos(len(emphasized))
 	l.emit(itemEmphasized)
 	return lexText2
+}
+
+// lexOpenTagLeft scans open HTML tag left delimiters
+func lexOpenTagLeft(l *lexer) stateFn {
+	l.pos += Pos(len(openTagLeft))
+	l.emit(itemOpenTagLeft)
+	return lexTagName
+}
+
+// lexCloseTagLeft scans close HTML tag left delimiters
+func lexCloseTagLeft(l *lexer) stateFn {
+	l.pos += Pos(len(closeTagLeft))
+	l.emit(itemCloseTagLeft)
+	return lexTagName
+}
+
+// lexTagRight scans HTML tag right delimiters
+func lexTagRight(l *lexer) stateFn {
+	l.pos += Pos(len(tagRight))
+	l.emit(itemTagRight)
+	return lexText2
+}
+
+// lexTagName scans HTML tag names
+func lexTagName(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == '>':
+			l.backup()
+			if l.pos > l.start {
+				l.emit(itemTagName)
+			}
+			return lexTagRight
+		}
+	}
 }
