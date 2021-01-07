@@ -362,6 +362,16 @@ func TestLex(t *testing.T) {
 			it(itemTagName, "strong"),
 			it(itemTagRight, ">"),
 		}, false},
+		{"Hello '''[[world|world!]]'''", "Link in markup", []item{
+			it(itemText, "Hello "),
+			it(itemStrong, "'''"),
+			it(itemLeftLink, "[["),
+			it(itemLink, "world"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "world!"),
+			it(itemRightLink, "]]"),
+			it(itemStrong, "'''"),
+		}, false},
 		{"{{m|en|world|gloss=<span style=\"color: red\">hello</span>}}", "HTML tag in nmaed parameter", []item{
 			it(itemLeftTemplate, "{{"),
 			it(itemAction, "m"),
