@@ -362,7 +362,7 @@ func TestLex(t *testing.T) {
 			dmp := diffmatchpatch.New()
 			diffs := dmp.DiffMain(want, got, false)
 			diffText := dmp.DiffPrettyText(diffs)
-			t.Errorf("%s: NewLexer(%q) diff: %s", tt.desc, tt.input, diffText)
+			t.Errorf("%s: NewLexer(%q) diff:\n%s", tt.desc, tt.input, diffText)
 		}
 	}
 }
