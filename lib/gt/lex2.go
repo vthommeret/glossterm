@@ -256,28 +256,28 @@ func lexEmphasized2(l *lexer) stateFn {
 	return lexText2
 }
 
-// lexOpenTagLeft scans open HTML tag left delimiters
+// lexOpenTagLeft scans open HTML tag left delimiters (<)
 func lexOpenTagLeft(l *lexer) stateFn {
 	l.pos += Pos(len(openTagLeft))
 	l.emit(itemOpenTagLeft)
 	return lexOpenTagName
 }
 
-// lexCloseTagLeft scans close HTML tag left delimiters
+// lexCloseTagLeft scans close HTML tag left delimiters (</)
 func lexCloseTagLeft(l *lexer) stateFn {
 	l.pos += Pos(len(closeTagLeft))
 	l.emit(itemCloseTagLeft)
 	return lexCloseTagName
 }
 
-// lexTagRight scans HTML tag right delimiters
+// lexTagRight scans HTML tag right delimiters (>)
 func lexTagRight(l *lexer) stateFn {
 	l.pos += Pos(len(tagRight))
 	l.emitTrim(itemTagRight)
 	return lexText2
 }
 
-// lexOpenTagName scans HTML tag names
+// lexOpenTagName scans HTML opening tag names (e.g. span)
 func lexOpenTagName(l *lexer) stateFn {
 	for {
 		switch r := l.next(); {
@@ -297,7 +297,7 @@ func lexOpenTagName(l *lexer) stateFn {
 	}
 }
 
-// lexCloseTagName scans HTML tag names
+// lexCloseTagName scans HTML closing tag names (e.g. span)
 func lexCloseTagName(l *lexer) stateFn {
 	for {
 		switch r := l.next(); {
@@ -311,7 +311,7 @@ func lexCloseTagName(l *lexer) stateFn {
 	}
 }
 
-// lexTagAttrName scans HTML tag attribute names
+// lexTagAttrName scans HTML tag attribute names (e.g. style)
 func lexTagAttrName(l *lexer) stateFn {
 	for {
 		switch r := l.next(); {
@@ -330,7 +330,7 @@ func lexTagAttrName(l *lexer) stateFn {
 	}
 }
 
-// lexTagAttrValueLeft scans HTML tag attribute left delimiter
+// lexTagAttrValueLeft scans HTML tag attribute left delimiter (")
 func lexTagAttrValueLeft(l *lexer) stateFn {
 	for {
 		switch r := l.next(); {
@@ -341,7 +341,7 @@ func lexTagAttrValueLeft(l *lexer) stateFn {
 	}
 }
 
-// lexTagAttrValue scans HTML tag attribute value
+// lexTagAttrValue scans HTML tag attribute value (e.g. "color: red")
 func lexTagAttrValue(l *lexer) stateFn {
 	for {
 		switch r := l.next(); {
