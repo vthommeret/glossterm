@@ -359,23 +359,6 @@ func TestLex(t *testing.T) {
 			it(itemTagAttrValue, "SOED"),
 			it(itemCloseTagRight, "/>"),
 		}, false},
-		// TODO: Need to support balancing quotes / ghost quotes for below cases
-		/*
-			{"<ref name=\"SOED\" />", "HTML void tag whitespace", []item{
-				it(itemOpenTagLeft, "<"),
-				it(itemTagName, "ref"),
-				it(itemTagAttrName, "name"),
-				it(itemTagAttrValue, "SOED"),
-				it(itemCloseTagRight, "/>"),
-			}, false},
-			{"<ref name=SOED />", "HTML void tag unquoted attribute whitespace", []item{
-				it(itemOpenTagLeft, "<"),
-				it(itemTagName, "ref"),
-				it(itemTagAttrName, "name"),
-				it(itemTagAttrValue, "SOED"),
-				it(itemCloseTagRight, "/>"),
-			}, false},
-		*/
 		{"<span valueless>Blah</span>", "HTML valueless attribute", []item{
 			it(itemOpenTagLeft, "<"),
 			it(itemTagName, "span"),
@@ -574,9 +557,411 @@ func TestLex(t *testing.T) {
 			it(itemTagCommentRight, "-->"),
 			it(itemRightTemplate, "}}"),
 		}, false},
+
+		// Balance tests - Templates and links
+
+		{"[[amazing|templated {{gloss|a note}}]]", "Balanced template in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "templated "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemText, "a note"),
+			it(itemRightTemplate, "}}"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|templated {{gloss|a note}}", "Balanced template in unbalanced link", []item{
+			it(itemText, "[[amazing|templated "),
+			it(itemLeftTemplate, "{{"),
+			it(itemAction, "gloss"),
+			it(itemParamDelim, "|"),
+			it(itemText, "a note"),
+			it(itemRightTemplate, "}}"),
+		}, false},
+		{"[[amazing|templated {{gloss|a note]]", "Unbalanced template in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "templated {{gloss|a note"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|templated {{gloss|a note", "Unbalanced template in unbalanced link", []item{
+			it(itemText, "[[amazing|templated {{gloss|a note"),
+		}, false},
+
+		// Balance tests - Markup and links
+
+		{"[[amazing|markup '''text''']]", "Balanced markup in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "markup "),
+			it(itemStrong, "'''"),
+			it(itemText, "text"),
+			it(itemStrong, "'''"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|markup '''text'''", "Balanced markup in unbalanced link", []item{
+			it(itemText, "[[amazing|markup "),
+			it(itemStrong, "'''"),
+			it(itemText, "text"),
+			it(itemStrong, "'''"),
+		}, false},
+		{"[[amazing|markup '''text]]", "Unbalanced markup in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "markup '''text"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|markup '''text", "Unbalanced markup in unbalanced link", []item{
+			it(itemText, "[[amazing|markup '''text"),
+		}, false},
+
+		// Balance tests - HTML tags and links
+
+		{"[[amazing|html <span>text</span>]]", "Balanced HTML in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span>text</span>", "Balanced HTML in unbalanced link", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+		}, false},
+		{"[[amazing|html <span>text]]", "Unbalanced HTML in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span>text", "Unbalanced HTML in unbalanced link", []item{
+			it(itemText, "[[amazing|html <span>text"),
+		}, false},
+		/*
+			{"[[amazing|html <span>text</em>]]", "Unbalanced HTML (incorrect tag) in balanced link", []item{}, false},
+		*/
+
+		// Balance tests - HTML opening delimiters and links
+
+		{"[[amazing|html <span text]]", "Unbalanced HTML opening delimiters in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html <span text"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span text", "Unbalanced HTML opening delimiters in unbalanced link", []item{
+			it(itemText, "[[amazing|html <span text"),
+		}, false},
+
+		// Balance tests - HTML closing delimiters and links
+
+		{"[[amazing|html <span>text</span]]", "Unbalanced HTML closing delimiters in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html <span text"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span>text</span", "Unbalanced HTML closing delimiters in unbalanced link", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemText, "text</span"),
+		}, false},
+
+		// Balance tests - HTML quoted attributes and links
+
+		{"[[amazing|html <span class=\"test\">text</span>]]", "Balanced HTML quoted attributes in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span class=\"test\">text</span>", "Balanced HTML quoted attributes in unbalanced link", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+		}, false},
+		{"[[amazing|html <span class=\"test>text</span>]]", "Unbalanced HTML quoted attributes in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span class=\"test>text</span>", "Unbalanced HTML quoted attributes in unbalanced link", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+		}, false},
+		{"[[amazing|html <span class=\"test style=\"color: red\">text</span>", "Unbalanced HTML quoted multiple attributes in unbalanced link 1", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test style="),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+		}, false},
+		{"[[amazing|html <span class=\"test\" style=\"color: red>text</span>", "Unbalanced HTML quoted multiple attributes in unbalanced link 2", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagAttrName, "style"),
+			it(itemTagAttrValue, "color: red"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+		}, false},
+
+		// Balance tests - HTML unquoted attributes and links
+
+		{"[[amazing|html <span class=\"test\" unquoted=blah>text</span>]]", "Balanced HTML quoted and unquoted attributes in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagAttrName, "unquoted"),
+			it(itemTagAttrValue, "blah"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span unquoted=blah class=\"test\">text</span>]]", "Balanced HTML unquoted and quoted attributes in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "unquoted"),
+			it(itemTagAttrValue, "blah"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemCloseTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span unquoted class=\"test>text</span]]", "Unbalanced HTML unquoted and quoted attributes in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "unquoted"),
+			it(itemTagAttrValue, "blah"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemCloseTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span class=\"test unquoted>text</span]]", "Unbalanced HTML quoted and unquoted attributes in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "unquoted"),
+			it(itemTagAttrValue, "blah"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test unquoted"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemCloseTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+
+		// Balance tests - HTML blank attributes
+
+		{"[[amazing|html <span class=>text</span>]]", "Missing attribute value", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemCloseTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span class= style=\"color: red\">text</span>", "Initial missing attribute value", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrName, "style"),
+			it(itemTagAttrValue, "color: red"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemCloseTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <span class=\"test\" style=>text</span>", "Trailing missing attribute value", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemOpenTagLeft, "<"),
+			it(itemTagName, "span"),
+			it(itemTagAttrName, "class"),
+			it(itemTagAttrValue, "test"),
+			it(itemTagAttrName, "style"),
+			it(itemTagRight, ">"),
+			it(itemText, "text"),
+			it(itemCloseTagLeft, "</"),
+			it(itemTagName, "span"),
+			it(itemCloseTagRight, ">"),
+			it(itemRightLink, "]]"),
+		}, false},
+
+		// TODO: Add void tag (self-closing and not) balance tests. With quoted / non-quoted attributes.
+		/*
+			// Balance tests -- HTML void tags
+				{"<ref name=\"SOED\" />", "Balanced HTML quoted void tags", []item{
+					it(itemOpenTagLeft, "<"),
+					it(itemTagName, "ref"),
+					it(itemTagAttrName, "name"),
+					it(itemTagAttrValue, "SOED"),
+					it(itemCloseTagRight, "/>"),
+				}, false},
+				{"<ref name=SOED />", "HTML void tag unquoted attribute whitespace", []item{
+					it(itemOpenTagLeft, "<"),
+					it(itemTagName, "ref"),
+					it(itemTagAttrName, "name"),
+					it(itemTagAttrValue, "SOED"),
+					it(itemCloseTagRight, "/>"),
+				}, false},
+		*/
+		// TODO: Matching / non-matching HTML tag names.
+
+		// Balance tests - HTML comments and links
+
+		{"[[amazing|html <!-- comment -->]]", "Balanced HTML comment in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html "),
+			it(itemTagCommentLeft, "<!--"),
+			it(itemTagComment, " comment "),
+			it(itemTagCommentRight, "-->"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <!-- comment -->", "Balanced HTML comment in unbalanced link", []item{
+			it(itemText, "[[amazing|html "),
+			it(itemTagCommentLeft, "<!--"),
+			it(itemTagComment, " comment "),
+			it(itemTagCommentRight, "-->"),
+		}, false},
+		{"[[amazing|html <!-- comment]]", "Unbalanced HTML comment in balanced link", []item{
+			it(itemLeftLink, "[["),
+			it(itemLink, "amazing"),
+			it(itemLinkDelim, "|"),
+			it(itemText, "html <!-- comment"),
+			it(itemRightLink, "]]"),
+		}, false},
+		{"[[amazing|html <!-- comment", "Unbalanced HTML comment in unbalanced link", []item{
+			it(itemText, "[[amazing|html <!-- comment"),
+		}, false},
 	}
 
 	for _, tt := range tests {
+		// TODO: Remove
+		if len(tt.want) == 0 {
+			continue
+		}
+
 		l := NewLexer2(tt.input, true)
 		l.debug = tt.debug
 
