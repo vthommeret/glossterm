@@ -1,5 +1,7 @@
 # glossterm 0.5
 
+glossterm is a pipeline that extracts, lexes, and parses wiktionary data.
+
 ## Pipeline
 
 In order to generate files for the web app, you need to grab an English
