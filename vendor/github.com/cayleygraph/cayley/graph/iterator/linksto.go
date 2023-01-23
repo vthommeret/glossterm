@@ -30,170 +30,220 @@ package iterator
 // Can be seen as the dual of the HasA iterator.
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/quad"
 )
+
+var _ graph.IteratorFuture = &LinksTo{}
 
 // A LinksTo has a reference back to the graph.QuadStore (to create the iterators
 // for each node) the subiterator, and the direction the iterator comes from.
 // `next_it` is the tempoarary iterator held per result in `primary_it`.
 type LinksTo struct {
-	uid       uint64
-	tags      graph.Tagger
-	qs        graph.QuadStore
-	primaryIt graph.Iterator
-	dir       quad.Direction
-	nextIt    graph.Iterator
-	result    graph.Value
-	runstats  graph.IteratorStats
-	err       error
+	it *linksTo
+	graph.Iterator
 }
 
 // Construct a new LinksTo iterator around a direction and a subiterator of
 // nodes.
-func NewLinksTo(qs graph.QuadStore, it graph.Iterator, d quad.Direction) *LinksTo {
-	return &LinksTo{
-		uid:       NextUID(),
-		qs:        qs,
-		primaryIt: it,
-		dir:       d,
-		nextIt:    &Null{},
+func NewLinksTo(qs graph.QuadIndexer, sub graph.Iterator, d quad.Direction) *LinksTo {
+	it := &LinksTo{
+		it: newLinksTo(qs, graph.AsShape(sub), d),
 	}
+	it.Iterator = graph.NewLegacy(it.it, it)
+	return it
 }
 
-func (it *LinksTo) UID() uint64 {
-	return it.uid
-}
-
-func (it *LinksTo) Reset() {
-	it.primaryIt.Reset()
-	if it.nextIt != nil {
-		it.nextIt.Close()
-	}
-	it.nextIt = &Null{}
-}
-
-func (it *LinksTo) Tagger() *graph.Tagger {
-	return &it.tags
-}
-
-func (it *LinksTo) Clone() graph.Iterator {
-	out := NewLinksTo(it.qs, it.primaryIt.Clone(), it.dir)
-	out.tags.CopyFrom(it)
-	return out
+func (it *LinksTo) AsShape() graph.IteratorShape {
+	it.Close()
+	return it.it
 }
 
 // Return the direction under consideration.
-func (it *LinksTo) Direction() quad.Direction { return it.dir }
+func (it *LinksTo) Direction() quad.Direction { return it.it.Direction() }
 
-// Tag these results, and our subiterator's results.
-func (it *LinksTo) TagResults(dst map[string]graph.Value) {
-	for _, tag := range it.tags.Tags() {
-		dst[tag] = it.Result()
-	}
+var _ graph.IteratorShapeCompat = &linksTo{}
 
-	for tag, value := range it.tags.Fixed() {
-		dst[tag] = value
-	}
-
-	it.primaryIt.TagResults(dst)
+// A LinksTo has a reference back to the graph.QuadStore (to create the iterators
+// for each node) the subiterator, and the direction the iterator comes from.
+// `next_it` is the tempoarary iterator held per result in `primary_it`.
+type linksTo struct {
+	qs      graph.QuadIndexer
+	primary graph.IteratorShape
+	dir     quad.Direction
+	size    graph.Size
 }
 
-func (it *LinksTo) Describe() graph.Description {
-	primary := it.primaryIt.Describe()
-	return graph.Description{
-		UID:       it.UID(),
-		Type:      it.Type(),
-		Direction: it.dir,
-		Iterator:  &primary,
+// Construct a new LinksTo iterator around a direction and a subiterator of
+// nodes.
+func newLinksTo(qs graph.QuadIndexer, it graph.IteratorShape, d quad.Direction) *linksTo {
+	return &linksTo{
+		qs:      qs,
+		primary: it,
+		dir:     d,
 	}
 }
 
-// If it checks in the right direction for the subiterator, it is a valid link
-// for the LinksTo.
-func (it *LinksTo) Contains(val graph.Value) bool {
-	graph.ContainsLogIn(it, val)
-	it.runstats.Contains += 1
-	node := it.qs.QuadDirection(val, it.dir)
-	if it.primaryIt.Contains(node) {
-		it.result = val
-		return graph.ContainsLogOut(it, val, true)
-	}
-	it.err = it.primaryIt.Err()
-	return graph.ContainsLogOut(it, val, false)
+// Return the direction under consideration.
+func (it *linksTo) Direction() quad.Direction { return it.dir }
+
+func (it *linksTo) Iterate() graph.Scanner {
+	return newLinksToNext(it.qs, it.primary.Iterate(), it.dir)
+}
+
+func (it *linksTo) Lookup() graph.Index {
+	return newLinksToContains(it.qs, it.primary.Lookup(), it.dir)
+}
+
+func (it *linksTo) AsLegacy() graph.Iterator {
+	it2 := &LinksTo{it: it}
+	it2.Iterator = graph.NewLegacy(it, it2)
+	return it2
+}
+
+func (it *linksTo) String() string {
+	return fmt.Sprintf("LinksTo(%v)", it.dir)
 }
 
 // Return a list containing only our subiterator.
-func (it *LinksTo) SubIterators() []graph.Iterator {
-	return []graph.Iterator{it.primaryIt}
+func (it *linksTo) SubIterators() []graph.IteratorShape {
+	return []graph.IteratorShape{it.primary}
 }
 
 // Optimize the LinksTo, by replacing it if it can be.
-func (it *LinksTo) Optimize() (graph.Iterator, bool) {
-	newPrimary, changed := it.primaryIt.Optimize()
+func (it *linksTo) Optimize(ctx context.Context) (graph.IteratorShape, bool) {
+	newPrimary, changed := it.primary.Optimize(ctx)
 	if changed {
-		it.primaryIt = newPrimary
-		if it.primaryIt.Type() == graph.Null {
-			it.nextIt.Close()
-			return it.primaryIt, true
+		it.primary = newPrimary
+		if IsNull2(it.primary) {
+			return it.primary, true
 		}
-	}
-	// Ask the graph.QuadStore if we can be replaced. Often times, this is a great
-	// optimization opportunity (there's a fixed iterator underneath us, for
-	// example).
-	newReplacement, hasOne := it.qs.OptimizeIterator(it)
-	if hasOne {
-		it.Close()
-		return newReplacement, true
 	}
 	return it, false
 }
 
-// Next()ing a LinksTo operates as described above.
-func (it *LinksTo) Next() bool {
-	graph.NextLogIn(it)
-	it.runstats.Next += 1
-	if it.nextIt.Next() {
-		it.runstats.ContainsNext += 1
-		it.result = it.nextIt.Result()
-		return graph.NextLogOut(it, true)
-	}
-
-	// If there's an error in the 'next' iterator, we save it and we're done.
-	it.err = it.nextIt.Err()
-	if it.err != nil {
-		return false
-	}
-
-	// Subiterator is empty, get another one
-	if !it.primaryIt.Next() {
-		// Possibly save error
-		it.err = it.primaryIt.Err()
-
-		// We're out of nodes in our subiterator, so we're done as well.
-		return graph.NextLogOut(it, false)
-	}
-	it.nextIt.Close()
-	it.nextIt = it.qs.QuadIterator(it.dir, it.primaryIt.Result())
-
-	// Recurse -- return the first in the next set.
-	return it.Next()
+// Return a guess as to how big or costly it is to next the iterator.
+func (it *linksTo) Stats(ctx context.Context) (graph.IteratorCosts, error) {
+	subitStats, err := it.primary.Stats(ctx)
+	// TODO(barakmich): These should really come from the quadstore itself
+	checkConstant := int64(1)
+	nextConstant := int64(2)
+	return graph.IteratorCosts{
+		NextCost:     nextConstant + subitStats.NextCost,
+		ContainsCost: checkConstant + subitStats.ContainsCost,
+		Size:         it.getSize(ctx),
+	}, err
 }
 
-func (it *LinksTo) Err() error {
+func (it *linksTo) getSize(ctx context.Context) graph.Size {
+	if it.size.Size != 0 {
+		return it.size
+	}
+	if fixed, ok := graph.AsLegacy(it.primary).(*Fixed); ok {
+		// get real sizes from sub iterators
+		var (
+			sz    int64
+			exact = true
+		)
+		for _, v := range fixed.Values() {
+			sit := it.qs.QuadIterator(it.dir, v)
+			n, ex := sit.Size()
+			sit.Close()
+			sz += n
+			exact = exact && ex
+		}
+		it.size.Size, it.size.Exact = sz, exact
+		return it.size
+	}
+	// TODO(barakmich): It should really come from the quadstore itself
+	const fanoutFactor = 20
+	st, _ := it.primary.Stats(ctx)
+	st.Size.Size *= fanoutFactor
+	it.size.Size, it.size.Exact = st.Size.Size, false
+	return it.size
+}
+
+// A LinksTo has a reference back to the graph.QuadStore (to create the iterators
+// for each node) the subiterator, and the direction the iterator comes from.
+// `next_it` is the tempoarary iterator held per result in `primary_it`.
+type linksToNext struct {
+	qs      graph.QuadIndexer
+	primary graph.Scanner
+	dir     quad.Direction
+	nextIt  graph.Scanner
+	result  graph.Ref
+	err     error
+}
+
+// Construct a new LinksTo iterator around a direction and a subiterator of
+// nodes.
+func newLinksToNext(qs graph.QuadIndexer, it graph.Scanner, d quad.Direction) graph.Scanner {
+	return &linksToNext{
+		qs:      qs,
+		primary: it,
+		dir:     d,
+		nextIt:  newNull().Iterate(),
+	}
+}
+
+// Return the direction under consideration.
+func (it *linksToNext) Direction() quad.Direction { return it.dir }
+
+// Tag these results, and our subiterator's results.
+func (it *linksToNext) TagResults(dst map[string]graph.Ref) {
+	it.primary.TagResults(dst)
+}
+
+func (it *linksToNext) String() string {
+	return fmt.Sprintf("LinksToNext(%v)", it.dir)
+}
+
+// Next()ing a LinksTo operates as described above.
+func (it *linksToNext) Next(ctx context.Context) bool {
+	for {
+		if it.nextIt.Next(ctx) {
+			it.result = it.nextIt.Result()
+			return true
+		}
+
+		// If there's an error in the 'next' iterator, we save it and we're done.
+		it.err = it.nextIt.Err()
+		if it.err != nil {
+			return false
+		}
+
+		// Subiterator is empty, get another one
+		if !it.primary.Next(ctx) {
+			// Possibly save error
+			it.err = it.primary.Err()
+
+			// We're out of nodes in our subiterator, so we're done as well.
+			return false
+		}
+		it.nextIt.Close()
+		it.nextIt = it.qs.QuadIterator(it.dir, it.primary.Result())
+
+		// Continue -- return the first in the next set.
+	}
+}
+
+func (it *linksToNext) Err() error {
 	return it.err
 }
 
-func (it *LinksTo) Result() graph.Value {
+func (it *linksToNext) Result() graph.Ref {
 	return it.result
 }
 
 // Close closes the iterator.  It closes all subiterators it can, but
 // returns the first error it encounters.
-func (it *LinksTo) Close() error {
+func (it *linksToNext) Close() error {
 	err := it.nextIt.Close()
 
-	_err := it.primaryIt.Close()
+	_err := it.primary.Close()
 	if _err != nil && err == nil {
 		err = _err
 	}
@@ -202,38 +252,72 @@ func (it *LinksTo) Close() error {
 }
 
 // We won't ever have a new result, but our subiterators might.
-func (it *LinksTo) NextPath() bool {
-	ok := it.primaryIt.NextPath()
+func (it *linksToNext) NextPath(ctx context.Context) bool {
+	ok := it.primary.NextPath(ctx)
 	if !ok {
-		it.err = it.primaryIt.Err()
+		it.err = it.primary.Err()
 	}
 	return ok
 }
 
-// Register the LinksTo.
-func (it *LinksTo) Type() graph.Type { return graph.LinksTo }
+// A LinksTo has a reference back to the graph.QuadStore (to create the iterators
+// for each node) the subiterator, and the direction the iterator comes from.
+// `next_it` is the tempoarary iterator held per result in `primary_it`.
+type linksToContains struct {
+	qs      graph.QuadIndexer
+	primary graph.Index
+	dir     quad.Direction
+	result  graph.Ref
+}
 
-// Return a guess as to how big or costly it is to next the iterator.
-func (it *LinksTo) Stats() graph.IteratorStats {
-	subitStats := it.primaryIt.Stats()
-	// TODO(barakmich): These should really come from the quadstore itself
-	fanoutFactor := int64(20)
-	checkConstant := int64(1)
-	nextConstant := int64(2)
-	return graph.IteratorStats{
-		NextCost:     nextConstant + subitStats.NextCost,
-		ContainsCost: checkConstant + subitStats.ContainsCost,
-		Size:         fanoutFactor * subitStats.Size,
-		ExactSize:    false,
-		Next:         it.runstats.Next,
-		Contains:     it.runstats.Contains,
-		ContainsNext: it.runstats.ContainsNext,
+// Construct a new LinksTo iterator around a direction and a subiterator of
+// nodes.
+func newLinksToContains(qs graph.QuadIndexer, it graph.Index, d quad.Direction) graph.Index {
+	return &linksToContains{
+		qs:      qs,
+		primary: it,
+		dir:     d,
 	}
 }
 
-func (it *LinksTo) Size() (int64, bool) {
-	st := it.Stats()
-	return st.Size, st.ExactSize
+// Return the direction under consideration.
+func (it *linksToContains) Direction() quad.Direction { return it.dir }
+
+// Tag these results, and our subiterator's results.
+func (it *linksToContains) TagResults(dst map[string]graph.Ref) {
+	it.primary.TagResults(dst)
 }
 
-var _ graph.Iterator = &LinksTo{}
+func (it *linksToContains) String() string {
+	return fmt.Sprintf("LinksToContains(%v)", it.dir)
+}
+
+// If it checks in the right direction for the subiterator, it is a valid link
+// for the LinksTo.
+func (it *linksToContains) Contains(ctx context.Context, val graph.Ref) bool {
+	node := it.qs.QuadDirection(val, it.dir)
+	if it.primary.Contains(ctx, node) {
+		it.result = val
+		return true
+	}
+	return false
+}
+
+func (it *linksToContains) Err() error {
+	return it.primary.Err()
+}
+
+func (it *linksToContains) Result() graph.Ref {
+	return it.result
+}
+
+// Close closes the iterator.  It closes all subiterators it can, but
+// returns the first error it encounters.
+func (it *linksToContains) Close() error {
+	return it.primary.Close()
+}
+
+// We won't ever have a new result, but our subiterators might.
+func (it *linksToContains) NextPath(ctx context.Context) bool {
+	return it.primary.NextPath(ctx)
+}

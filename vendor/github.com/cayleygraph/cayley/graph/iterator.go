@@ -17,21 +17,14 @@ package graph
 // Define the general iterator interface.
 
 import (
-	"fmt"
-	"strings"
-	"sync"
+	"context"
+	"reflect"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/quad"
 )
 
-type Tagger struct {
-	tags      []string
-	fixedTags map[string]Value
-}
-
 // TODO(barakmich): Linkage is general enough that there are places we take
-//the combined arguments `quad.Direction, graph.Value` that it may be worth
+//the combined arguments `quad.Direction, graph.Ref` that it may be worth
 //converting these into Linkages. If nothing else, future indexed iterators may
 //benefit from the shared representation
 
@@ -39,62 +32,36 @@ type Tagger struct {
 // quad direction.
 type Linkage struct {
 	Dir   quad.Direction
-	Value Value
+	Value Ref
 }
 
-// TODO(barakmich): Helper functions as needed, eg, ValuesForDirection(quad.Direction) []Value
+// TODO(barakmich): Helper functions as needed, eg, ValuesForDirection(quad.Direction) []Ref
 
-// Add a tag to the iterator.
-func (t *Tagger) Add(tag string) {
-	t.tags = append(t.tags, tag)
+// TaggerBase is a base interface for Tagger and TaggerShape.
+type TaggerBase interface {
+	Tags() []string
+	FixedTags() map[string]Ref
+	AddTags(tag ...string)
+	AddFixedTag(tag string, value Ref)
 }
 
-func (t *Tagger) AddFixed(tag string, value Value) {
-	if t.fixedTags == nil {
-		t.fixedTags = make(map[string]Value)
-	}
-	t.fixedTags[tag] = value
+// Tagger is an interface for iterators that can tag values. Tags are returned as a part of TagResults call.
+type Tagger interface {
+	Iterator
+	TaggerBase
+	CopyFromTagger(st TaggerBase)
 }
 
-// Tags returns the tags held in the tagger. The returned value must not be mutated.
-func (t *Tagger) Tags() []string {
-	return t.tags
-}
-
-// Fixed returns the fixed tags held in the tagger. The returned value must not be mutated.
-func (t *Tagger) Fixed() map[string]Value {
-	return t.fixedTags
-}
-
-func (t *Tagger) CopyFrom(src Iterator) {
-	t.CopyFromTagger(src.Tagger())
-}
-
-func (t *Tagger) CopyFromTagger(st *Tagger) {
-	t.tags = append(t.tags, st.tags...)
-
-	if t.fixedTags == nil {
-		t.fixedTags = make(map[string]Value, len(st.fixedTags))
-	}
-	for k, v := range st.fixedTags {
-		t.fixedTags[k] = v
-	}
-}
-
-type Iterator interface {
-	Tagger() *Tagger
+// IteratorBase is a set of common methods for Scanner and Index iterators.
+type IteratorBase interface {
+	// String returns a short textual representation of an iterator.
+	String() string
 
 	// Fills a tag-to-result-value map.
-	TagResults(map[string]Value)
+	TagResults(map[string]Ref)
 
 	// Returns the current result.
-	Result() Value
-
-	// Next advances the iterator to the next value, which will then be available through
-	// the Result method. It returns false if no further advancement is possible, or if an
-	// error was encountered during iteration.  Err should be consulted to distinguish
-	// between the two cases.
-	Next() bool
+	Result() Ref
 
 	// These methods are the heart and soul of the iterator, as they constitute
 	// the iteration interface.
@@ -114,19 +81,31 @@ type Iterator interface {
 	//
 	// NextPath() advances iterators that may have more than one valid result,
 	// from the bottom up.
-	NextPath() bool
-
-	// Contains returns whether the value is within the set held by the iterator.
-	Contains(Value) bool
+	NextPath(ctx context.Context) bool
 
 	// Err returns any error that was encountered by the Iterator.
 	Err() error
 
+	// TODO: make a requirement that Err should return ErrClosed after Close is called
+
+	// Close the iterator and do internal cleanup.
+	Close() error
+}
+
+type Iterator interface {
+	IteratorBase
+
+	// Next advances the iterator to the next value, which will then be available through
+	// the Result method. It returns false if no further advancement is possible, or if an
+	// error was encountered during iteration.  Err should be consulted to distinguish
+	// between the two cases.
+	Next(ctx context.Context) bool
+
+	// Contains returns whether the value is within the set held by the iterator.
+	Contains(ctx context.Context, v Ref) bool
+
 	// Start iteration from the beginning
 	Reset()
-
-	// Create a new iterator just like this one
-	Clone() Iterator
 
 	// These methods relate to choosing the right iterator, or optimizing an
 	// iterator tree
@@ -142,10 +121,6 @@ type Iterator interface {
 	// or a conservative estimate.
 	Size() (int64, bool)
 
-	// Returns a string relating to what the function of the iterator is. By
-	// knowing the names of the iterators, we can devise optimization strategies.
-	Type() Type
-
 	// Optimizes an iterator. Can replace the iterator, or merely move things
 	// around internally. if it chooses to replace it with a better iterator,
 	// returns (the new iterator, true), if not, it returns (self, false).
@@ -153,51 +128,92 @@ type Iterator interface {
 
 	// Return a slice of the subiterators for this iterator.
 	SubIterators() []Iterator
+}
 
-	// Return a string representation of the iterator.
-	Describe() Description
+// IteratorFuture is an optional interface for legacy Iterators that support direct conversion
+// to an IteratorShape. This interface should be avoided an will be deprecated in the future.
+type IteratorFuture interface {
+	Iterator
+	AsShape() IteratorShape
+}
 
-	// Close the iterator and do internal cleanup.
-	Close() error
-
-	// UID returns the unique identifier of the iterator.
-	UID() uint64
+// DescribeIterator returns a description of the iterator tree.
+func DescribeIterator(it Iterator) Description {
+	sz, exact := it.Size()
+	d := Description{
+		UID:  uint64(reflect.ValueOf(it).Pointer()),
+		Name: it.String(),
+		Type: reflect.TypeOf(it).String(),
+		Size: sz, Exact: exact,
+	}
+	if tg, ok := it.(Tagger); ok {
+		d.Tags = tg.Tags()
+	}
+	if sub := it.SubIterators(); len(sub) != 0 {
+		d.Iterators = make([]Description, 0, len(sub))
+		for _, sit := range sub {
+			d.Iterators = append(d.Iterators, DescribeIterator(sit))
+		}
+	}
+	return d
 }
 
 type Description struct {
-	UID       uint64         `json:",omitempty"`
-	Name      string         `json:",omitempty"`
-	Type      Type           `json:",omitempty"`
-	Tags      []string       `json:",omitempty"`
-	Size      int64          `json:",omitempty"`
-	Direction quad.Direction `json:",omitempty"`
-	Iterator  *Description   `json:",omitempty"`
-	Iterators []Description  `json:",omitempty"`
+	UID       uint64        `json:",omitempty"`
+	Name      string        `json:",omitempty"`
+	Type      string        `json:",omitempty"`
+	Tags      []string      `json:",omitempty"`
+	Size      int64         `json:",omitempty"`
+	Exact     bool          `json:",omitempty"`
+	Iterators []Description `json:",omitempty"`
 }
 
 // ApplyMorphism is a curried function that can generates a new iterator based on some prior iterator.
 type ApplyMorphism func(QuadStore, Iterator) Iterator
 
-// CanNext is a helper for checking if iterator can be Next()'ed.
-func CanNext(it Iterator) bool {
-	_, ok := it.(NoNext)
-	return !ok
-}
-
-// NoNext is an optional interface to signal that iterator should be Contain()'ed instead of Next()'ing if possible.
-type NoNext interface {
-	NoNext()
-}
-
 // Height is a convienence function to measure the height of an iterator tree.
-func Height(it Iterator, until Type) int {
-	if it.Type() == until {
+func Height(it Iterator, filter func(Iterator) bool) int {
+	if filter != nil && !filter(it) {
 		return 1
 	}
 	subs := it.SubIterators()
 	maxDepth := 0
 	for _, sub := range subs {
-		h := Height(sub, until)
+		if s, ok := sub.(IteratorFuture); ok {
+			h := Height2(s.AsShape(), func(it IteratorShape) bool {
+				return filter(AsLegacy(it))
+			})
+			if h > maxDepth {
+				maxDepth = h
+			}
+			continue
+		}
+		h := Height(sub, filter)
+		if h > maxDepth {
+			maxDepth = h
+		}
+	}
+	return maxDepth + 1
+}
+
+// Height is a convienence function to measure the height of an iterator tree.
+func Height2(it IteratorShape, filter func(IteratorShape) bool) int {
+	if filter != nil && !filter(it) {
+		return 1
+	}
+	subs := it.SubIterators()
+	maxDepth := 0
+	for _, sub := range subs {
+		if s, ok := sub.(IteratorShapeCompat); ok {
+			h := Height(s.AsLegacy(), func(it Iterator) bool {
+				return filter(AsShape(it))
+			})
+			if h > maxDepth {
+				maxDepth = h
+			}
+			continue
+		}
+		h := Height2(sub, filter)
 		if h > maxDepth {
 			maxDepth = h
 		}
@@ -208,7 +224,7 @@ func Height(it Iterator, until Type) int {
 // FixedIterator wraps iterators that are modifiable by addition of fixed value sets.
 type FixedIterator interface {
 	Iterator
-	Add(Value)
+	Add(Ref)
 }
 
 type IteratorStats struct {
@@ -221,103 +237,9 @@ type IteratorStats struct {
 	ContainsNext int64
 }
 
-// Type enumerates the set of Iterator types.
-type Type int
-
-// These are the iterator types, defined as constants
-const (
-	Invalid Type = iota
-	All
-	And
-	Or
-	HasA
-	LinksTo
-	Comparison
-	Null
-	Fixed
-	Not
-	Optional
-	Materialize
-	Unique
-	Limit
-	Skip
-	Regex
-	Count
-)
-
-var (
-	// We use a sync.Mutex rather than an RWMutex since the client packages keep
-	// the Type that was returned, so the only possibility for contention is at
-	// initialization.
-	lock sync.Mutex
-	// These strings must be kept in order consistent with the Type const block above.
-	types = []string{
-		"invalid",
-		"all",
-		"and",
-		"or",
-		"hasa",
-		"linksto",
-		"comparison",
-		"null",
-		"fixed",
-		"not",
-		"optional",
-		"materialize",
-		"unique",
-		"limit",
-		"skip",
-		"regex",
-		"count",
-	}
-)
-
-// RegisterIterator adds a new iterator type to the set of acceptable types, returning
-// the registered Type.
-// Calls to Register are idempotent and must be made prior to use of the iterator.
-// The conventional approach for use is to include a call to Register in a package
-// init() function, saving the Type to a private package var.
-func RegisterIterator(name string) Type {
-	lock.Lock()
-	defer lock.Unlock()
-	for i, t := range types {
-		if t == name {
-			return Type(i)
-		}
-	}
-	types = append(types, name)
-	return Type(len(types) - 1)
-}
-
-// String returns a string representation of the Type.
-func (t Type) String() string {
-	if t < 0 || int(t) >= len(types) {
-		return "illegal-type"
-	}
-	return types[t]
-}
-
-func (t *Type) MarshalText() (text []byte, err error) {
-	if *t < 0 || int(*t) >= len(types) {
-		return nil, fmt.Errorf("graph: illegal iterator type: %d", *t)
-	}
-	return []byte(types[*t]), nil
-}
-
-func (t *Type) UnmarshalText(text []byte) error {
-	s := string(text)
-	for i, c := range types[1:] {
-		if c == s {
-			*t = Type(i + 1)
-			return nil
-		}
-	}
-	return fmt.Errorf("graph: unknown iterator label: %q", text)
-}
-
 type StatsContainer struct {
 	UID  uint64
-	Type Type
+	Type string
 	IteratorStats
 	SubIts []StatsContainer
 }
@@ -325,48 +247,10 @@ type StatsContainer struct {
 func DumpStats(it Iterator) StatsContainer {
 	var out StatsContainer
 	out.IteratorStats = it.Stats()
-	out.Type = it.Type()
-	out.UID = it.UID()
+	out.Type = reflect.TypeOf(it).String()
+	out.UID = uint64(reflect.ValueOf(it).Pointer())
 	for _, sub := range it.SubIterators() {
 		out.SubIts = append(out.SubIts, DumpStats(sub))
 	}
 	return out
-}
-
-// Utility logging functions for when an iterator gets called Next upon, or Contains upon, as
-// well as what they return. Highly useful for tracing the execution path of a query.
-
-func ContainsLogIn(it Iterator, val Value) {
-	if clog.V(4) {
-		clog.Infof("%s %d CHECK CONTAINS %v", strings.ToUpper(it.Type().String()), it.UID(), val)
-	}
-}
-
-func ContainsLogOut(it Iterator, val Value, good bool) bool {
-	if clog.V(4) {
-		if good {
-			clog.Infof("%s %d CHECK CONTAINS %v GOOD", strings.ToUpper(it.Type().String()), it.UID(), val)
-		} else {
-			clog.Infof("%s %d CHECK CONTAINS %v BAD", strings.ToUpper(it.Type().String()), it.UID(), val)
-		}
-	}
-	return good
-}
-
-func NextLogIn(it Iterator) {
-	if clog.V(4) {
-		clog.Infof("%s %d NEXT", strings.ToUpper(it.Type().String()), it.UID())
-	}
-}
-
-func NextLogOut(it Iterator, ok bool) bool {
-	if clog.V(4) {
-		if ok {
-			val := it.Result()
-			clog.Infof("%s %d NEXT IS %v (%T)", strings.ToUpper(it.Type().String()), it.UID(), val, val)
-		} else {
-			clog.Infof("%s %d NEXT DONE", strings.ToUpper(it.Type().String()), it.UID())
-		}
-	}
-	return ok
 }

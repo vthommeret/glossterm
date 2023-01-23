@@ -13,7 +13,6 @@ require (
 	github.com/cayleygraph/quad v1.1.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/google/go-cmp v0.5.2
-	github.com/microcosm-cc/bluemonday v1.0.4
 	github.com/sergi/go-diff v1.1.0
 	github.com/spf13/cobra v1.0.0 // indirect
 	golang.org/x/net v0.0.0-20201031054903-ff519b6c9102

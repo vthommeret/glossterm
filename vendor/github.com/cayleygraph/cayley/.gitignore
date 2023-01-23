@@ -3,9 +3,14 @@ main
 *.test
 *.peg.go
 cayley.cfg
+cayley.yml
+cayley.json
 .cayley_history
 .DS_Store
 
 # The built binary
-/cayley
-/vendor
+cayley/
+dist/
+vendor/
+packrd/packed-*
+cayley

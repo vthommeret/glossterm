@@ -1,30 +1,39 @@
 language: go
 
-sudo: false
+addons:
+  apt:
+    packages:
+      - snapd
 
 go:
-  - 1.6
-  - 1.7
+  - "1.13.x"
   - tip
-
-install:
-  # Install our tracked dependencies
-  - go get -t ./...
-  - curl -L https://github.com/Masterminds/glide/releases/download/v0.11.1/glide-v0.11.1-linux-amd64.tar.gz -o /tmp/glide.tar.gz
-  - mkdir ../glide && cd ../glide && tar -xzf /tmp/glide.tar.gz && export PATH=$PATH:$PWD/linux-amd64/ && cd ../cayley
-  - glide install
-
-  # Google App Engine dependencies
-  - cd ..
-  - wget https://storage.googleapis.com/appengine-sdks/featured/go_appengine_sdk_linux_amd64-1.9.40.zip
-  - unzip -q go_appengine_sdk_linux_amd64-1.9.40.zip
-  - export PATH=$PATH:$PWD/go_appengine/
-  - cd cayley
-
-script:
-  - go test -v $(go list ./... | grep -v vendor/)
-  - goapp test -v ./graph/gaedatastore
 
 matrix:
   allow_failures:
     - go: tip
+
+install:
+  - sudo snap install snapcraft --classic
+  - go mod download
+
+cache:
+  directories:
+    - $GOPATH/pkg/mod
+
+script:
+  - CGO_ENABLED=0 go build -o /tmp/cayley ./cmd/cayley
+  - go run github.com/gobuffalo/packr/v2/packr2
+  - git checkout -- ./packrd/dummy.go
+  - go test -v ./...
+
+after_success:
+  - test -n "$TRAVIS_TAG" && echo "$SNAP_TOKEN" > /tmp/snap.login && snapcraft login --with /tmp/snap.login
+
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: git status && curl -sL https://git.io/goreleaser | bash
+    on:
+      tags: true
+      condition: $TRAVIS_OS_NAME = linux && $TRAVIS_GO_VERSION =~ ^1\.13

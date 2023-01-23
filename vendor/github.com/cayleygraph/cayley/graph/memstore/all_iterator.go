@@ -15,69 +15,222 @@
 package memstore
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
 )
+
+var _ graph.IteratorFuture = (*AllIterator)(nil)
 
 type AllIterator struct {
-	iterator.Int64
-	qs *QuadStore
+	it *allIterator
+	graph.Iterator
 }
 
-type (
-	nodesAllIterator AllIterator
-	quadsAllIterator AllIterator
-)
-
-func newNodesAllIterator(qs *QuadStore) *nodesAllIterator {
-	var out nodesAllIterator
-	out.Int64 = *iterator.NewInt64(1, qs.nextID-1, true)
-	out.qs = qs
-	return &out
+func newAllIterator(qs *QuadStore, nodes bool, maxid int64) *AllIterator {
+	it := &AllIterator{
+		it: newAllIterator2(qs, nodes, maxid),
+	}
+	it.Iterator = graph.NewLegacy(it.it, it)
+	return it
 }
 
-// No subiterators.
-func (it *nodesAllIterator) SubIterators() []graph.Iterator {
-	return nil
+func (it *AllIterator) AsShape() graph.IteratorShape {
+	it.Close()
+	return it.it
 }
 
-func (it *nodesAllIterator) Next() bool {
-	if !it.Int64.Next() {
+var _ graph.IteratorShape = (*allIterator)(nil)
+
+type allIterator struct {
+	qs    *QuadStore
+	all   []*primitive
+	maxid int64 // id of last observed insert (prim id)
+	nodes bool
+}
+
+func newAllIterator2(qs *QuadStore, nodes bool, maxid int64) *allIterator {
+	return &allIterator{
+		qs: qs, all: qs.cloneAll(), nodes: nodes,
+		maxid: maxid,
+	}
+}
+
+func (it *allIterator) Iterate() graph.Scanner {
+	return newAllIteratorNext(it.qs, it.nodes, it.maxid, it.all)
+}
+
+func (it *allIterator) Lookup() graph.Index {
+	return newAllIteratorContains(it.qs, it.nodes, it.maxid)
+}
+
+func (it *allIterator) AsLegacy() graph.Iterator {
+	it2 := &AllIterator{it: it}
+	it2.Iterator = graph.NewLegacy(it, it2)
+	return it2
+}
+
+func (it *allIterator) SubIterators() []graph.IteratorShape { return nil }
+func (it *allIterator) Optimize(ctx context.Context) (graph.IteratorShape, bool) {
+	return it, false
+}
+
+func (it *allIterator) String() string {
+	return "MemStoreAll"
+}
+
+func (it *allIterator) Stats(ctx context.Context) (graph.IteratorCosts, error) {
+	return graph.IteratorCosts{
+		NextCost:     1,
+		ContainsCost: 1,
+		Size: graph.Size{
+			// TODO(dennwc): use maxid?
+			Size:  int64(len(it.all)),
+			Exact: true,
+		},
+	}, nil
+}
+
+func (p *primitive) filter(isNode bool, maxid int64) bool {
+	if p.ID > maxid {
+		return false
+	} else if isNode && p.Value != nil {
+		return true
+	} else if !isNode && !p.Quad.Zero() {
+		return true
+	}
+	return false
+}
+
+type allIteratorNext struct {
+	qs    *QuadStore
+	all   []*primitive
+	maxid int64 // id of last observed insert (prim id)
+	nodes bool
+
+	i    int // index into qs.all
+	cur  *primitive
+	done bool
+}
+
+func newAllIteratorNext(qs *QuadStore, nodes bool, maxid int64, all []*primitive) *allIteratorNext {
+	return &allIteratorNext{
+		qs: qs, all: all, nodes: nodes,
+		i: -1, maxid: maxid,
+	}
+}
+
+func (it *allIteratorNext) ok(p *primitive) bool {
+	return p.filter(it.nodes, it.maxid)
+}
+
+func (it *allIteratorNext) Next(ctx context.Context) bool {
+	it.cur = nil
+	if it.done {
 		return false
 	}
-	_, ok := it.qs.revIDMap[int64(it.Int64.Result().(iterator.Int64Node))]
-	if !ok {
-		return it.Next()
+	all := it.all
+	if it.i >= len(all) {
+		it.done = true
+		return false
 	}
-	return true
+	it.i++
+	for ; it.i < len(all); it.i++ {
+		p := all[it.i]
+		if p.ID > it.maxid {
+			break
+		}
+		if it.ok(p) {
+			it.cur = p
+			return true
+		}
+	}
+	it.done = true
+	return false
 }
 
-func (it *nodesAllIterator) Err() error {
+func (it *allIteratorNext) Result() graph.Ref {
+	if it.cur == nil {
+		return nil
+	}
+	if !it.cur.Quad.Zero() {
+		return qprim{p: it.cur}
+	}
+	return bnode(it.cur.ID)
+}
+
+func (it *allIteratorNext) Err() error { return nil }
+func (it *allIteratorNext) Close() error {
+	it.done = true
+	it.all = nil
 	return nil
 }
 
-func newQuadsAllIterator(qs *QuadStore) *quadsAllIterator {
-	var out quadsAllIterator
-	out.Int64 = *iterator.NewInt64(1, qs.nextQuadID-1, false)
-	out.qs = qs
-	return &out
+func (it *allIteratorNext) TagResults(dst map[string]graph.Ref) {}
+
+func (it *allIteratorNext) String() string {
+	return "MemStoreAllNext"
+}
+func (it *allIteratorNext) NextPath(ctx context.Context) bool { return false }
+
+type allIteratorContains struct {
+	qs    *QuadStore
+	maxid int64 // id of last observed insert (prim id)
+	nodes bool
+
+	cur  *primitive
+	done bool
 }
 
-func (it *quadsAllIterator) Next() bool {
-	out := it.Int64.Next()
-	if out {
-		i64 := int64(it.Int64.Result().(iterator.Int64Quad))
-		if it.qs.log[i64].DeletedBy != 0 || it.qs.log[i64].Action == graph.Delete {
-			return it.Next()
-		}
+func newAllIteratorContains(qs *QuadStore, nodes bool, maxid int64) *allIteratorContains {
+	return &allIteratorContains{
+		qs: qs, nodes: nodes,
+		maxid: maxid,
 	}
-	return out
 }
 
-// Override Optimize from it.Int64 - it will hide our Next implementation in other cases.
+func (it *allIteratorContains) ok(p *primitive) bool {
+	return p.filter(it.nodes, it.maxid)
+}
 
-func (it *nodesAllIterator) Optimize() (graph.Iterator, bool) { return it, false }
-func (it *quadsAllIterator) Optimize() (graph.Iterator, bool) { return it, false }
+func (it *allIteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+	it.cur = nil
+	if it.done {
+		return false
+	}
+	id, ok := asID(v)
+	if !ok {
+		return false
+	}
+	p := it.qs.prim[id]
+	if p.ID > it.maxid {
+		return false
+	}
+	if !it.ok(p) {
+		return false
+	}
+	it.cur = p
+	return true
+}
+func (it *allIteratorContains) Result() graph.Ref {
+	if it.cur == nil {
+		return nil
+	}
+	if !it.cur.Quad.Zero() {
+		return qprim{p: it.cur}
+	}
+	return bnode(it.cur.ID)
+}
 
-var _ graph.Iterator = &nodesAllIterator{}
-var _ graph.Iterator = &quadsAllIterator{}
+func (it *allIteratorContains) Err() error { return nil }
+func (it *allIteratorContains) Close() error {
+	it.done = true
+	return nil
+}
+
+func (it *allIteratorContains) TagResults(dst map[string]graph.Ref) {}
+
+func (it *allIteratorContains) String() string {
+	return "MemStoreAllContains"
+}
+func (it *allIteratorContains) NextPath(ctx context.Context) bool { return false }

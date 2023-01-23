@@ -22,25 +22,66 @@ package iterator
 // May return the same value twice -- once for each branch.
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 )
 
+var _ graph.IteratorFuture = &Or{}
+
 type Or struct {
-	uid               uint64
-	tags              graph.Tagger
-	isShortCircuiting bool
-	internalIterators []graph.Iterator
-	itCount           int
-	currentIterator   int
-	result            graph.Value
-	err               error
+	it *or
+	graph.Iterator
 }
 
 func NewOr(sub ...graph.Iterator) *Or {
+	in := make([]graph.IteratorShape, 0, len(sub))
+	for _, s := range sub {
+		in = append(in, graph.AsShape(s))
+	}
 	it := &Or{
-		uid:               NextUID(),
-		internalIterators: make([]graph.Iterator, 0, 20),
-		currentIterator:   -1,
+		it: newOr(in...),
+	}
+	it.Iterator = graph.NewLegacy(it.it, it)
+	return it
+}
+
+func NewShortCircuitOr(sub ...graph.Iterator) *Or {
+	in := make([]graph.IteratorShape, 0, len(sub))
+	for _, s := range sub {
+		in = append(in, graph.AsShape(s))
+	}
+	it := &Or{
+		it: newShortCircuitOr(in...),
+	}
+	it.Iterator = graph.NewLegacy(it.it, it)
+	return it
+}
+
+func (it *Or) AsShape() graph.IteratorShape {
+	it.Close()
+	return it.it
+}
+
+// Add a subiterator to this Or graph.iterator. Order matters.
+func (it *Or) AddSubIterator(sub graph.Iterator) {
+	it.it.AddSubIterator(graph.AsShape(sub))
+}
+
+var _ graph.IteratorShapeCompat = &or{}
+
+type or struct {
+	isShortCircuiting bool
+	sub               []graph.IteratorShape
+	curInd            int
+	result            graph.Ref
+	err               error
+}
+
+func newOr(sub ...graph.IteratorShape) *or {
+	it := &or{
+		sub:    make([]graph.IteratorShape, 0, 20),
+		curInd: -1,
 	}
 	for _, s := range sub {
 		it.AddSubIterator(s)
@@ -48,133 +89,246 @@ func NewOr(sub ...graph.Iterator) *Or {
 	return it
 }
 
-func NewShortCircuitOr() *Or {
-	return &Or{
-		uid:               NextUID(),
-		internalIterators: make([]graph.Iterator, 0, 20),
+func newShortCircuitOr(sub ...graph.IteratorShape) *or {
+	it := &or{
+		sub:               make([]graph.IteratorShape, 0, 20),
 		isShortCircuiting: true,
-		currentIterator:   -1,
+		curInd:            -1,
 	}
+	for _, s := range sub {
+		it.AddSubIterator(s)
+	}
+	return it
 }
 
-func (it *Or) UID() uint64 {
-	return it.uid
+func (it *or) Iterate() graph.Scanner {
+	sub := make([]graph.Scanner, 0, len(it.sub))
+	for _, s := range it.sub {
+		sub = append(sub, s.Iterate())
+	}
+	return newOrNext(sub, it.isShortCircuiting)
 }
 
-// Reset all internal iterators
-func (it *Or) Reset() {
-	for _, sub := range it.internalIterators {
-		sub.Reset()
+func (it *or) Lookup() graph.Index {
+	sub := make([]graph.Index, 0, len(it.sub))
+	for _, s := range it.sub {
+		sub = append(sub, s.Lookup())
 	}
-	it.currentIterator = -1
+	return newOrContains(sub, it.isShortCircuiting)
 }
 
-func (it *Or) Tagger() *graph.Tagger {
-	return &it.tags
-}
-
-func (it *Or) Clone() graph.Iterator {
-	var or *Or
-	if it.isShortCircuiting {
-		or = NewShortCircuitOr()
-	} else {
-		or = NewOr()
-	}
-	for _, sub := range it.internalIterators {
-		or.AddSubIterator(sub.Clone())
-	}
-	or.tags.CopyFrom(it)
-	return or
+func (it *or) AsLegacy() graph.Iterator {
+	it2 := &Or{it: it}
+	it2.Iterator = graph.NewLegacy(it, it2)
+	return it2
 }
 
 // Returns a list.List of the subiterators, in order. The returned slice must not be modified.
-func (it *Or) SubIterators() []graph.Iterator {
-	return it.internalIterators
+func (it *or) SubIterators() []graph.IteratorShape {
+	return it.sub
+}
+
+func (it *or) String() string {
+	return "Or"
+}
+
+// Add a subiterator to this Or graph.iterator. Order matters.
+func (it *or) AddSubIterator(sub graph.IteratorShape) {
+	it.sub = append(it.sub, sub)
+}
+
+func (it *or) Optimize(ctx context.Context) (graph.IteratorShape, bool) {
+	old := it.SubIterators()
+	optIts := optimizeSubIterators2(ctx, old)
+	newOr := newOr()
+	newOr.isShortCircuiting = it.isShortCircuiting
+
+	// Add the subiterators in order.
+	for _, o := range optIts {
+		newOr.AddSubIterator(o)
+	}
+	return newOr, true
+}
+
+// Returns the approximate size of the Or graph.iterator. Because we're dealing
+// with a union, we know that the largest we can be is the sum of all the iterators,
+// or in the case of short-circuiting, the longest.
+func (it *or) Stats(ctx context.Context) (graph.IteratorCosts, error) {
+	ContainsCost := int64(0)
+	NextCost := int64(0)
+	Size := graph.Size{
+		Size:  0,
+		Exact: true,
+	}
+	var last error
+	for _, sub := range it.sub {
+		stats, err := sub.Stats(ctx)
+		if err != nil {
+			last = err
+		}
+		NextCost += stats.NextCost
+		ContainsCost += stats.ContainsCost
+		if it.isShortCircuiting {
+			if Size.Size < stats.Size.Size {
+				Size = stats.Size
+			}
+		} else {
+			Size.Size += stats.Size.Size
+			Size.Exact = Size.Exact && stats.Size.Exact
+		}
+	}
+	return graph.IteratorCosts{
+		ContainsCost: ContainsCost,
+		NextCost:     NextCost,
+		Size:         Size,
+	}, last
+}
+
+type orNext struct {
+	shortCircuit bool
+	sub          []graph.Scanner
+	curInd       int
+	result       graph.Ref
+	err          error
+}
+
+func newOrNext(sub []graph.Scanner, shortCircuit bool) *orNext {
+	return &orNext{
+		sub:          sub,
+		curInd:       -1,
+		shortCircuit: shortCircuit,
+	}
 }
 
 // Overrides BaseIterator TagResults, as it needs to add it's own results and
 // recurse down it's subiterators.
-func (it *Or) TagResults(dst map[string]graph.Value) {
-	for _, tag := range it.tags.Tags() {
-		dst[tag] = it.Result()
-	}
-
-	for tag, value := range it.tags.Fixed() {
-		dst[tag] = value
-	}
-
-	it.internalIterators[it.currentIterator].TagResults(dst)
+func (it *orNext) TagResults(dst map[string]graph.Ref) {
+	it.sub[it.curInd].TagResults(dst)
 }
 
-func (it *Or) Describe() graph.Description {
-	subIts := make([]graph.Description, len(it.internalIterators))
-	for i, sub := range it.internalIterators {
-		subIts[i] = sub.Describe()
-	}
-	return graph.Description{
-		UID:       it.UID(),
-		Type:      it.Type(),
-		Tags:      it.tags.Tags(),
-		Iterators: subIts,
-	}
-}
-
-// Add a subiterator to this Or graph.iterator. Order matters.
-func (it *Or) AddSubIterator(sub graph.Iterator) {
-	it.internalIterators = append(it.internalIterators, sub)
-	it.itCount++
+func (it *orNext) String() string {
+	return "OrNext"
 }
 
 // Next advances the Or graph.iterator. Because the Or is the union of its
 // subiterators, it must produce from all subiterators -- unless it it
 // shortcircuiting, in which case, it is the first one that returns anything.
-func (it *Or) Next() bool {
-	graph.NextLogIn(it)
+func (it *orNext) Next(ctx context.Context) bool {
+	if it.curInd >= len(it.sub) {
+		return false
+	}
 	var first bool
 	for {
-		if it.currentIterator == -1 {
-			it.currentIterator = 0
+		if it.curInd == -1 {
+			it.curInd = 0
 			first = true
 		}
-		curIt := it.internalIterators[it.currentIterator]
+		curIt := it.sub[it.curInd]
 
-		if curIt.Next() {
+		if curIt.Next(ctx) {
 			it.result = curIt.Result()
-			return graph.NextLogOut(it, true)
+			return true
 		}
 
 		it.err = curIt.Err()
 		if it.err != nil {
-			return graph.NextLogOut(it, false)
+			return false
 		}
 
-		if it.isShortCircuiting && !first {
+		if it.shortCircuit && !first {
 			break
 		}
-		it.currentIterator++
-		if it.currentIterator == it.itCount {
+		it.curInd++
+		if it.curInd >= len(it.sub) {
 			break
 		}
 	}
 
-	return graph.NextLogOut(it, false)
+	return false
 }
 
-func (it *Or) Err() error {
+func (it *orNext) Err() error {
 	return it.err
 }
 
-func (it *Or) Result() graph.Value {
+func (it *orNext) Result() graph.Ref {
+	return it.result
+}
+
+// An Or has no NextPath of its own -- that is, there are no other values
+// which satisfy our previous result that are not the result itself. Our
+// subiterators might, however, so just pass the call recursively. In the case of
+// shortcircuiting, only allow new results from the currently checked graph.iterator
+func (it *orNext) NextPath(ctx context.Context) bool {
+	if it.curInd != -1 {
+		currIt := it.sub[it.curInd]
+		ok := currIt.NextPath(ctx)
+		if !ok {
+			it.err = currIt.Err()
+		}
+		return ok
+	}
+	return false
+}
+
+// Close this graph.iterator, and, by extension, close the subiterators.
+// Close should be idempotent, and it follows that if it's subiterators
+// follow this contract, the Or follows the contract.  It closes all
+// subiterators it can, but returns the first error it encounters.
+func (it *orNext) Close() error {
+	var err error
+	for _, sub := range it.sub {
+		_err := sub.Close()
+		if _err != nil && err == nil {
+			err = _err
+		}
+	}
+	return err
+}
+
+var _ graph.Iterator = &Or{}
+
+type orContains struct {
+	shortCircuit bool
+	sub          []graph.Index
+	curInd       int
+	result       graph.Ref
+	err          error
+}
+
+func newOrContains(sub []graph.Index, shortCircuit bool) *orContains {
+	return &orContains{
+		sub:          sub,
+		curInd:       -1,
+		shortCircuit: shortCircuit,
+	}
+}
+
+// Overrides BaseIterator TagResults, as it needs to add it's own results and
+// recurse down it's subiterators.
+func (it *orContains) TagResults(dst map[string]graph.Ref) {
+	it.sub[it.curInd].TagResults(dst)
+}
+
+func (it *orContains) String() string {
+	return "OrContains"
+}
+
+func (it *orContains) Err() error {
+	return it.err
+}
+
+func (it *orContains) Result() graph.Ref {
 	return it.result
 }
 
 // Checks a value against the iterators, in order.
-func (it *Or) subItsContain(val graph.Value) (bool, error) {
-	var subIsGood = false
-	for i, sub := range it.internalIterators {
-		subIsGood = sub.Contains(val)
+func (it *orContains) subItsContain(ctx context.Context, val graph.Ref) (bool, error) {
+	subIsGood := false
+	for i, sub := range it.sub {
+		subIsGood = sub.Contains(ctx, val)
 		if subIsGood {
-			it.currentIterator = i
+			it.curInd = i
 			break
 		}
 
@@ -187,137 +341,46 @@ func (it *Or) subItsContain(val graph.Value) (bool, error) {
 }
 
 // Check a value against the entire graph.iterator, in order.
-func (it *Or) Contains(val graph.Value) bool {
-	graph.ContainsLogIn(it, val)
-	anyGood, err := it.subItsContain(val)
+func (it *orContains) Contains(ctx context.Context, val graph.Ref) bool {
+	anyGood, err := it.subItsContain(ctx, val)
 	if err != nil {
 		it.err = err
 		return false
 	} else if !anyGood {
-		return graph.ContainsLogOut(it, val, false)
+		return false
 	}
 	it.result = val
-	return graph.ContainsLogOut(it, val, true)
-}
-
-// Returns the approximate size of the Or graph.iterator. Because we're dealing
-// with a union, we know that the largest we can be is the sum of all the iterators,
-// or in the case of short-circuiting, the longest.
-func (it *Or) Size() (int64, bool) {
-	var val int64
-	var b bool
-	if it.isShortCircuiting {
-		val = 0
-		b = true
-		for _, sub := range it.internalIterators {
-			newval, newb := sub.Size()
-			if val < newval {
-				val = newval
-			}
-			b = newb && b
-		}
-	} else {
-		val = 0
-		b = true
-		for _, sub := range it.internalIterators {
-			newval, newb := sub.Size()
-			val += newval
-			b = newb && b
-		}
-	}
-	return val, b
+	return true
 }
 
 // An Or has no NextPath of its own -- that is, there are no other values
 // which satisfy our previous result that are not the result itself. Our
 // subiterators might, however, so just pass the call recursively. In the case of
 // shortcircuiting, only allow new results from the currently checked graph.iterator
-func (it *Or) NextPath() bool {
-	if it.currentIterator != -1 {
-		currIt := it.internalIterators[it.currentIterator]
-		ok := currIt.NextPath()
+func (it *orContains) NextPath(ctx context.Context) bool {
+	if it.curInd != -1 {
+		currIt := it.sub[it.curInd]
+		ok := currIt.NextPath(ctx)
 		if !ok {
 			it.err = currIt.Err()
 		}
 		return ok
 	}
+	// TODO(dennwc): this should probably list matches from other sub-iterators
 	return false
 }
-
-// Perform or-specific cleanup, of which there currently is none.
-func (it *Or) cleanUp() {}
 
 // Close this graph.iterator, and, by extension, close the subiterators.
 // Close should be idempotent, and it follows that if it's subiterators
 // follow this contract, the Or follows the contract.  It closes all
 // subiterators it can, but returns the first error it encounters.
-func (it *Or) Close() error {
-	it.cleanUp()
-
+func (it *orContains) Close() error {
 	var err error
-	for _, sub := range it.internalIterators {
+	for _, sub := range it.sub {
 		_err := sub.Close()
 		if _err != nil && err == nil {
 			err = _err
 		}
 	}
-
 	return err
 }
-
-func (it *Or) Optimize() (graph.Iterator, bool) {
-	old := it.SubIterators()
-	optIts := optimizeSubIterators(old)
-	// Close the replaced iterators (they ought to close themselves, but Close()
-	// is idempotent, so this just protects against any machinations).
-	closeIteratorList(old, nil)
-	newOr := NewOr()
-	newOr.isShortCircuiting = it.isShortCircuiting
-
-	// Add the subiterators in order.
-	for _, o := range optIts {
-		newOr.AddSubIterator(o)
-	}
-
-	// Move the tags hanging on us (like any good replacement).
-	newOr.tags.CopyFrom(it)
-
-	// And close ourselves but not our subiterators -- some may still be alive in
-	// the new And (they were unchanged upon calling Optimize() on them, at the
-	// start).
-	it.cleanUp()
-	return newOr, true
-}
-
-func (it *Or) Stats() graph.IteratorStats {
-	ContainsCost := int64(0)
-	NextCost := int64(0)
-	Size := int64(0)
-	Exact := true
-	for _, sub := range it.internalIterators {
-		stats := sub.Stats()
-		NextCost += stats.NextCost
-		ContainsCost += stats.ContainsCost
-		if it.isShortCircuiting {
-			if Size < stats.Size {
-				Size = stats.Size
-				Exact = stats.ExactSize
-			}
-		} else {
-			Size += stats.Size
-			Exact = Exact && stats.ExactSize
-		}
-	}
-	return graph.IteratorStats{
-		ContainsCost: ContainsCost,
-		NextCost:     NextCost,
-		Size:         Size,
-		ExactSize:    Exact,
-	}
-
-}
-
-// Register this as an "or" graph.iterator.
-func (it *Or) Type() graph.Type { return graph.Or }
-
-var _ graph.Iterator = &Or{}

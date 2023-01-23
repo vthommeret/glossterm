@@ -4,15 +4,9 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	_ "github.com/cayleygraph/cayley/graph/memstore"
 	"github.com/cayleygraph/cayley/graph/path"
-	"github.com/cayleygraph/cayley/quad"
 	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/cayleygraph/quad"
 )
-
-type Iterator graph.Iterator
-type QuadStore graph.QuadStore
-type QuadWriter graph.QuadWriter
-
-type Path path.Path
 
 var (
 	StartMorphism = path.StartMorphism
@@ -21,9 +15,21 @@ var (
 	NewTransaction = graph.NewTransaction
 )
 
+type Iterator = graph.Iterator
+type QuadStore = graph.QuadStore
+type QuadWriter = graph.QuadWriter
+
+type Path = path.Path
+
 type Handle struct {
 	graph.QuadStore
 	graph.QuadWriter
+}
+
+func (h *Handle) Close() error {
+	err := h.QuadWriter.Close()
+	h.QuadStore.Close()
+	return err
 }
 
 func Triple(subject, predicate, object interface{}) quad.Quad {
@@ -48,10 +54,4 @@ func NewGraph(name, dbpath string, opts graph.Options) (*Handle, error) {
 
 func NewMemoryGraph() (*Handle, error) {
 	return NewGraph("memstore", "", nil)
-}
-
-func (h *Handle) Close() error {
-	err := h.QuadWriter.Close()
-	h.QuadStore.Close()
-	return err
 }

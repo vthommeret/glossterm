@@ -16,7 +16,7 @@ package iterator
 
 import (
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/quad"
 )
 
 type Node struct {
@@ -37,19 +37,19 @@ type Link struct {
 type queryShape struct {
 	nodes    []Node
 	links    []Link
-	qs       graph.QuadStore
+	qs       graph.Namer
 	nodeID   int
 	hasaIDs  []int
 	hasaDirs []quad.Direction
 }
 
-func OutputQueryShapeForIterator(it graph.Iterator, qs graph.QuadStore, outputMap map[string]interface{}) {
+func OutputQueryShapeForIterator(it graph.Iterator, qs graph.Namer, outputMap map[string]interface{}) {
 	s := &queryShape{
 		qs:     qs,
 		nodeID: 1,
 	}
 
-	node := s.MakeNode(it.Clone())
+	node := s.MakeNode(it)
 	s.AddNode(node)
 	outputMap["nodes"] = s.nodes
 	outputMap["links"] = s.links
@@ -108,71 +108,75 @@ func (s *queryShape) StealNode(left *Node, right *Node) {
 
 func (s *queryShape) MakeNode(it graph.Iterator) *Node {
 	n := Node{ID: s.nodeID}
-	for _, tag := range it.Tagger().Tags() {
-		n.Tags = append(n.Tags, tag)
-	}
-	for k := range it.Tagger().Fixed() {
-		n.Tags = append(n.Tags, k)
+	return s.makeNode(&n, it)
+}
+func (s *queryShape) makeNode(n *Node, it graph.Iterator) *Node {
+	if tg, ok := it.(graph.Tagger); ok {
+		for _, tag := range tg.Tags() {
+			n.Tags = append(n.Tags, tag)
+		}
+		for k := range tg.FixedTags() {
+			n.Tags = append(n.Tags, k)
+		}
+		if sub := tg.SubIterators(); len(sub) == 1 {
+			return s.makeNode(n, sub[0])
+		}
 	}
 
-	switch it.Type() {
-	case graph.And:
+	switch it := it.(type) {
+	case *And:
 		for _, sub := range it.SubIterators() {
 			s.nodeID++
 			newNode := s.MakeNode(sub)
-			if sub.Type() != graph.Or {
-				s.StealNode(&n, newNode)
+			if _, ok := sub.(*Or); !ok {
+				s.StealNode(n, newNode)
 			} else {
 				s.AddNode(newNode)
 				s.AddLink(&Link{n.ID, newNode.ID, 0, 0})
 			}
 		}
-	case graph.Fixed:
+	case *Fixed:
 		n.IsFixed = true
-		for it.Next() {
-			n.Values = append(n.Values, s.qs.NameOf(it.Result()).String())
+		for _, v := range it.Values() {
+			n.Values = append(n.Values, s.qs.NameOf(v).String())
 		}
-	case graph.HasA:
-		hasa := it.(*HasA)
-		s.PushHasa(n.ID, hasa.dir)
+	case *HasA:
+		hasa := it
+		s.PushHasa(n.ID, hasa.it.dir)
 		s.nodeID++
-		newNode := s.MakeNode(hasa.primaryIt)
+		newNode := s.MakeNode(graph.AsLegacy(hasa.it.primary))
 		s.AddNode(newNode)
 		s.RemoveHasa()
-	case graph.Or:
+	case *Or:
 		for _, sub := range it.SubIterators() {
 			s.nodeID++
 			newNode := s.MakeNode(sub)
-			if sub.Type() == graph.Or {
-				s.StealNode(&n, newNode)
+			if _, ok := sub.(*Or); ok {
+				s.StealNode(n, newNode)
 			} else {
 				s.AddNode(newNode)
 				s.AddLink(&Link{n.ID, newNode.ID, 0, 0})
 			}
 		}
-	case graph.LinksTo:
+	case *LinksTo:
 		n.IsLinkNode = true
-		lto := it.(*LinksTo)
+		lto := it
 		s.nodeID++
-		newNode := s.MakeNode(lto.primaryIt)
+		newNode := s.MakeNode(graph.AsLegacy(lto.it.primary))
 		hasaID, hasaDir := s.LastHasa()
-		if (hasaDir == quad.Subject && lto.dir == quad.Object) ||
-			(hasaDir == quad.Object && lto.dir == quad.Subject) {
+		if (hasaDir == quad.Subject && lto.it.dir == quad.Object) ||
+			(hasaDir == quad.Object && lto.it.dir == quad.Subject) {
 			s.AddNode(newNode)
 			if hasaDir == quad.Subject {
 				s.AddLink(&Link{hasaID, newNode.ID, 0, n.ID})
 			} else {
 				s.AddLink(&Link{newNode.ID, hasaID, 0, n.ID})
 			}
-		} else if lto.primaryIt.Type() == graph.Fixed {
-			s.StealNode(&n, newNode)
+		} else if _, ok := graph.AsLegacy(lto.it.primary).(*Fixed); ok {
+			s.StealNode(n, newNode)
 		} else {
 			s.AddNode(newNode)
 		}
-	case graph.Optional:
-		// Unsupported, for the moment
-		fallthrough
-	case graph.All:
 	}
-	return &n
+	return n
 }
