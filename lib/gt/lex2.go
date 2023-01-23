@@ -37,6 +37,13 @@ func (l *lexer) run2() {
 	close(l.items)
 }
 
+func (l *lexer) close() {
+	if l.pos > l.start {
+		l.emit(itemText)
+	}
+	l.emit(itemEOF)
+}
+
 func (l *lexer) remaining() string {
 	return l.input[l.pos:]
 }
@@ -149,10 +156,7 @@ Loop:
 	}
 
 	// Correctly reached EOF
-	if l.pos > l.start {
-		l.emit(itemText)
-	}
-	l.emit(itemEOF)
+	l.close()
 
 	return nil
 }
@@ -240,6 +244,9 @@ func lexLink2(l *lexer) stateFn {
 				}
 				return lexRightLink2
 			}
+		case r == eof:
+			l.close()
+			return nil
 		}
 	}
 }

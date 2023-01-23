@@ -242,6 +242,7 @@ func (l *lexer) emitItem(t itemType, trim bool) {
 	if trim {
 		input = strings.TrimSpace(input)
 	}
+	it := item{t, l.start, input, 0, false}
 	if l.debug {
 		var val string
 		if l.pos > l.start {
@@ -252,7 +253,7 @@ func (l *lexer) emitItem(t itemType, trim bool) {
 	if l.buffered.buffering {
 		l.buffer(t)
 	} else {
-		l.items <- item{t, l.start, input, 0, false}
+		l.items <- it
 		l.start = l.pos
 	}
 }
