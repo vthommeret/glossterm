@@ -15,7 +15,7 @@ const defaultOutputFile = "data/words.gob"
 const defaultDescendantsOutputFile = "data/descendants.gob"
 const defaultNoBackup = false
 
-const total = 2470000 // approximate
+const total = 3150000 // approximate
 const step = total / 100
 
 var inputFile string

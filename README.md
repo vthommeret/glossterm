@@ -45,26 +45,27 @@ to install globally available commands that can be run as e.g. `gtdump`.
 ## Debugging a single word
 
 1. `gtpage <word>`
-    extracts a single XML page for a given word.
-    Example: `gtpage helado`
+   extracts a single XML page for a given word.
+   Example: `gtpage helado`
 
 1. `gtlex <word.xml>`
-    lexes a single XML page for a given word.
-    Example: `gtpage hombre | gtlex`
+   lexes a single XML page for a given word.
+   Example: `gtpage hombre | gtlex`
 
 1. `gtparseword <word.xml>`
-    parses a single XML word.
-    Example: `gtpage horno | gtparseword`
+   parses a single XML word.
+   Example: `gtpage horno | gtparseword`
 
 1. `gtparseetymtree <word.xml>`
-    parses a single etymtree XML page.
-    Example: `gtpage Template:etymtree/la/germanus | gtparseetymtree`
+   parses a single etymtree XML page.
+   Example: `gtpage Template:etymtree/la/germanus | gtparseetymtree`
 
 1. `gtdescend <word>`
-    shows the descendants from any words mentioned for a given word.
+   shows the descendants from any words mentioned for a given word.
 
-## Additional commands
+1. `gtread <word>`
+   reads word from words.gob.
+   Example: `gtpage pt/nariz`
 
-1. `gtread`           reads words.gob.
-
-1. `gtsearch <query>` searches the index for a given word.
+1. `gtsearch <query>`
+   searches the index for a given word.

@@ -14,7 +14,7 @@ const (
 	apostrophe = '\u0027'
 )
 
-var DefaultLangs = []string{"en", "ang", "enm", "es", "fr", "fro", "frm", "la", "LL"}
+var DefaultLangs = []string{"en", "ang", "enm", "es", "pt", "fr", "fro", "frm", "la", "LL"}
 var DefaultLangMap map[string]bool
 
 var CanonicalLangs map[string]Lang
